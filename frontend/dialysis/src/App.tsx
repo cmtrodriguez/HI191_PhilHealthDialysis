@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import philhealthLogo from './assets/philhealth-logo.png';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
@@ -73,9 +74,11 @@ export default function App() {
         {/* Sidebar Header with Close Button */}
         <div className="p-6 flex items-center justify-between border-b border-emerald-800/50 min-h-[80px]">
           <div className="flex items-center gap-3">
-            <div className="bg-yellow-400 p-2 rounded-lg">
-              <Hospital className="w-5 h-5 text-emerald-900" />
-            </div>
+            <img
+              src={philhealthLogo}
+              alt="PhilHealth Logo"
+              className="w-10 h-10 rounded-lg object-contain bg-white p-1"
+            />
             <div className="overflow-hidden">
               <h1 className="font-bold text-lg leading-tight">PhilHealth</h1>
               <p className="text-[10px] text-emerald-300 uppercase tracking-widest font-semibold">Patient Portal</p>
