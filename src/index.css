@@ -1,0 +1,119 @@
+/* Art direction: Philippine government health form → clinical, trustworthy, professional
+   Palette: cool blue-green (PhilHealth brand), clean white surfaces
+   Typography: DM Sans (body) + Inter (display) — clean legibility for form UI
+   Density: balanced — form with clear field groupings */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Inter:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* PhilHealth brand: deep teal/green */
+  --color-primary: #006b5c;
+  --color-primary-hover: #005247;
+  --color-primary-active: #003d35;
+  --color-primary-highlight: #cce5e0;
+  --color-primary-light: #e8f5f2;
+
+  --color-secondary: #ffd700;
+  --color-secondary-text: #7a5e00;
+
+  /* Surfaces */
+  --color-bg: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f9fafb;
+  --color-surface-offset: #f0f2f5;
+  --color-divider: #e2e5ea;
+  --color-border: #d1d5db;
+  --color-border-focus: #006b5c;
+
+  /* Text */
+  --color-text: #111827;
+  --color-text-muted: #4b5563;
+  --color-text-faint: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  /* Status */
+  --color-error: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fca5a5;
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+
+  /* Type scale */
+  --text-xs:   clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.12);
+
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Inter', 'DM Sans', sans-serif;
+
+  --transition: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  scroll-padding-top: var(--space-8);
+}
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+}
+
+img, picture, video, canvas, svg { display: block; max-width: 100%; }
+input, button, textarea, select { font: inherit; color: inherit; }
+h1, h2, h3, h4, h5, h6 { text-wrap: balance; line-height: 1.2; }
+p { text-wrap: pretty; }
+button { cursor: pointer; background: none; border: none; }
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--color-primary-highlight);
+  color: var(--color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

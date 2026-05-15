@@ -1,0 +1,250 @@
+/* =============================================
+   PHILHEALTH — Single Page Form Styles
+   ============================================= */
+
+.page-wrap {
+  background: #f3f4f6;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.page {
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 22px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+  padding: 40px;
+}
+
+/* ---- Header ---- */
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.form-header-logo { display: flex; align-items: center; gap: 14px; }
+.form-header-brand { font-size: 1.25rem; font-weight: 700; color: #006b5c; line-height: 1.1; }
+.form-header-tagline { font-size: 0.85rem; color: #6b7280; font-style: italic; }
+.form-header-meta { font-size: 0.8rem; color: #9ca3af; text-align: right; }
+
+/* ---- Title ---- */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  color: #111827;
+  margin: 0 0 0.75rem;
+}
+
+.intro {
+  text-align: center;
+  font-size: 1rem;
+  color: #4b5563;
+  margin: 0 auto 2rem;
+  max-width: 760px;
+  line-height: 1.7;
+}
+
+/* ---- Section Cards ---- */
+.section-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 26px;
+  margin-bottom: 24px;
+  background: #fbfcfd;
+}
+
+.section-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #374151;
+  margin-bottom: 14px;
+  margin-top: 6px;
+}
+
+/* ---- Grid Columns ---- */
+.col-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; align-items: start; margin-bottom: 20px; }
+.col-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; margin-bottom: 20px; }
+.col-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; align-items: start; margin-bottom: 20px; }
+.col-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; align-items: start; margin-bottom: 20px; }
+.col-2:last-child, .col-3:last-child, .col-4:last-child, .col-5:last-child { margin-bottom: 0; }
+
+/* ---- Field ---- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.field-num {
+  color: #006b5c;
+  margin-right: 3px;
+}
+
+.field-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 1rem;
+  color: #111827;
+  font-family: inherit;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.field-input:hover { border-color: #006b5c; }
+.field-input:focus {
+  outline: none;
+  border-color: #006b5c;
+  box-shadow: 0 0 0 3px rgba(0,107,92,0.15);
+}
+.field-input::placeholder { color: #9ca3af; }
+.field-input--error { border-color: #ef4444 !important; background: #fef2f2; }
+
+select.field-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 36px;
+  cursor: pointer;
+}
+
+/* ---- Radio Groups ---- */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.radio-group--inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+}
+.radio-group--error { padding: 8px; border-radius: 10px; border: 1px solid #ef4444; background: #fef2f2; }
+
+.radio-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+  user-select: none;
+}
+.radio-label input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #006b5c;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ---- Error text ---- */
+.err {
+  font-size: 0.8rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* ---- Cert text ---- */
+.cert-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4b5563;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+/* ---- Submit Button ---- */
+.btn-submit {
+  display: block;
+  margin-top: 28px;
+  width: 100%;
+  padding: 18px;
+  background: #006b5c;
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: background 150ms, transform 100ms;
+}
+.btn-submit:hover { background: #005247; }
+.btn-submit:active { background: #003d35; transform: scale(0.99); }
+
+/* ---- Success Screen ---- */
+.success-box {
+  text-align: center;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.success-icon {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  background: #006b5c;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 10px rgba(0,107,92,0.12);
+  animation: pop 0.4s cubic-bezier(0.16,1,0.3,1);
+}
+@keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.success-box h2 { font-size: 1.75rem; color: #111827; margin: 0; }
+.success-box p { color: #4b5563; max-width: 48ch; margin: 0; }
+.success-details {
+  width: 100%; max-width: 420px;
+  border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;
+  text-align: left;
+}
+.success-row {
+  display: flex; justify-content: space-between;
+  padding: 12px 18px; font-size: 0.95rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.success-row:last-child { border-bottom: none; }
+.success-row span { color: #6b7280; }
+.success-row strong { color: #111827; }
+.success-note { font-size: 0.85rem; color: #9ca3af; max-width: 50ch; }
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) {
+  .col-5 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .col-4 { grid-template-columns: repeat(2, 1fr); }
+  .col-5 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 700px) {
+  .page-wrap { padding: 12px; }
+  .page { padding: 20px; border-radius: 16px; }
+  h1 { font-size: 1.4rem; }
+  .col-2, .col-3, .col-4, .col-5 { grid-template-columns: 1fr; }
+  .form-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
