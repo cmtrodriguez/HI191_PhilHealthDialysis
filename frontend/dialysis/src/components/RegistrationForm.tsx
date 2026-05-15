@@ -264,6 +264,10 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                       <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="patient@example.com" value={formData.contact?.email} onChange={(e) => updateNested('contact', 'email', e.target.value)} />
                     </div>
+                    <div className="space-y-1 col-span-2 sm:col-span-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Landline Number</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="(02) xxxx-xxxx" value={formData.contact?.landline} onChange={(e) => updateNested('contact', 'landline', e.target.value)} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -314,6 +318,17 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                         <option value="Others">Others</option>
                       </select>
                     </div>
+                    {formData.hdDetails?.type === 'Others' && (
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Other Dialyzer Type (please specify)</label>
+                        <input
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500"
+                          placeholder="Specify other dialyzer type..."
+                          value={formData.hdDetails?.othersDetail ?? ''}
+                          onChange={(e) => updateNested('hdDetails', 'othersDetail', e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -381,6 +396,112 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                   </div>
                   <div className="text-sm text-emerald-800 leading-relaxed italic">
                     I certify that the information given are true and correct. I understand that this information will be used for dialysis claims reimbursement.
+                  </div>
+                </div>
+
+                {/* Certification Fields */}
+                <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl space-y-6">
+                  <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-3">
+                    Certification &amp; Registration Details
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">16. Signature / Thumbmark (Upload Image)</label>
+                      {(formData as any).signaturePreview ? (
+                        <div className="relative w-full h-32 bg-slate-50 border-2 border-emerald-200 rounded-xl overflow-hidden group">
+                          <img
+                            src={(formData as any).signaturePreview}
+                            alt="Signature / Thumbmark"
+                            className="w-full h-full object-contain p-2"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, signaturePreview: '', signatureFileName: '' } as any))}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                          >
+                            ×
+                          </button>
+                          <p className="absolute bottom-2 left-3 text-[10px] text-slate-400 truncate max-w-[80%]">{(formData as any).signatureFileName}</p>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group">
+                          <div className="flex flex-col items-center gap-2 text-slate-400 group-hover:text-emerald-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                            <span className="text-xs font-semibold">Click to upload signature or thumbmark</span>
+                            <span className="text-[10px]">PNG, JPG, JPEG — max 2MB</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              if (file.size > 2 * 1024 * 1024) {
+                                alert('File size must be under 2MB.');
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  signaturePreview: ev.target?.result as string,
+                                  signatureFileName: file.name,
+                                } as any));
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">17. Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={(formData as any).signatureDate ?? ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, signatureDate: e.target.value } as any))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">18. PDD Registration No.</label>
+                      <input
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        placeholder="Auto-generated upon approval"
+                        value={formData.admin?.pddRegNo === 'AUTO-GEN' ? '' : formData.admin?.pddRegNo ?? ''}
+                        onChange={(e) => updateNested('admin', 'pddRegNo', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">19. Registered By (Health Care Institution)</label>
+                      <input
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        placeholder="Name of Health Care Institution"
+                        value={formData.admin?.registeredBy?.startsWith('Juan Dela Cruz') ? '' : formData.admin?.registeredBy ?? ''}
+                        onChange={(e) => updateNested('admin', 'registeredBy', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">20. Accreditation No.</label>
+                      <input
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        placeholder="e.g. HCI-2024-00001"
+                        value={formData.admin?.accreditationNo === 'N/A' ? '' : formData.admin?.accreditationNo ?? ''}
+                        onChange={(e) => updateNested('admin', 'accreditationNo', e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">21. Registration Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={formData.admin?.registrationDate ? formData.admin.registrationDate.substring(0, 10) : ''}
+                        onChange={(e) => updateNested('admin', 'registrationDate', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
