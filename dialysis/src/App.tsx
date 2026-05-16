@@ -584,6 +584,16 @@ const navigateTo = (view: PublicView) => {
     saveRegistrations(registrations.filter((r) => r.id !== id));
   };
 
+  const updateRegistration = (updatedReg: PDDRegistration) => {
+  saveRegistrations(
+    registrations.map((reg) =>
+      reg.id === updatedReg.id ? updatedReg : reg,
+    ),
+  );
+
+  setActiveView('my-records');
+  };
+
   const navItems = [
     { id: 'home', label: 'Home Portal', icon: LayoutDashboard },
     { id: 'apply', label: 'Apply for Registry', icon: PlusCircle },
@@ -751,6 +761,7 @@ const navigateTo = (view: PublicView) => {
                 <RecordsList
                   registrations={registrations}
                   onDelete={deleteRegistration}
+                  onUpdate={updateRegistration}
                 />
               )}
 
