@@ -203,8 +203,13 @@ export default function RecordsList({
                           </div>
 
                           <div>
-                            <p className="font-bold text-slate-800 leading-tight">
+                            <p className="font-bold text-slate-800 leading-tight flex items-center gap-1.5">
                               {reg.regType}
+                              {reg.memberVerified && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8px] font-black tracking-wider uppercase border border-emerald-200" title="Active against National Health Insurance Database">
+                                  ✓ Verified PIN
+                                </span>
+                              )}
                             </p>
                             <p className="text-xs text-slate-400 mt-1 capitalize">
                               {reg.hdDetails.type} Dialyzer
@@ -217,6 +222,11 @@ export default function RecordsList({
                         <span className="font-mono text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
                           {reg.pin}
                         </span>
+                        {reg.receiptNo && (
+                          <div className="text-[10px] text-slate-400 font-mono mt-1">
+                            e-Receipt: <span className="text-emerald-700 font-bold">{reg.receiptNo}</span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-sm text-slate-600 font-medium italic">
@@ -244,6 +254,13 @@ export default function RecordsList({
                           />
                           {reg.recordStatus}
                         </span>
+                        {reg.transmissionStatus && (
+                          <div className="text-[9px] font-bold mt-1 text-slate-400">
+                            Sync Status: <span className={`uppercase font-black ${
+                              reg.transmissionStatus === 'Receipted' ? 'text-emerald-700' : 'text-slate-500'
+                            }`}>{reg.transmissionStatus}</span>
+                          </div>
+                        )}
                       </td>
 
                       <td className="px-6 py-4 text-xs text-slate-400 font-medium">

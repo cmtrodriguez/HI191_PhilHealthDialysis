@@ -80,6 +80,11 @@ export interface PDDRegistration {
   admin: RegistrationAdmin;
   recordStatus: RecordStatus;
   pdfUrl?: string; // Cloud URL for certified PhilHealth PDF
+  memberVerified?: boolean; // Authenticated against National Health Insurance Database
+  transmissionStatus?: 'Draft' | 'Transmitting' | 'Transmitted' | 'Receipted' | 'Failed'; // External API state
+  transmissionId?: string; // External SOAP/REST API Transmission ID
+  receiptNo?: string; // e-Receipt Identifier
+  errorDetails?: string; // Raw error payload from external PhilHealth servers
   createdAt: string;
 }
 
@@ -92,6 +97,7 @@ export interface Nephrologist {
   email: string;
   isActive: boolean;
   signatureUrl?: string; // Digital Signature file/data URL
+  accreditationVerified?: boolean; // Checked against official PhilHealth Accreditation Registry
 }
 
 export type DialysisSessionClaimStatus = 'unsubmitted' | 'submitted' | 'approved' | 'denied' | 'rth';
@@ -106,6 +112,11 @@ export interface DialysisSession {
   claimRefNo?: string;
   amountClaimed: number; // usually 6350.00 pesos
   rthReason?: string; // Reason for Return To Hospital
+  transmissionStatus?: 'Draft' | 'Transmitting' | 'Transmitted' | 'Receipted' | 'Failed';
+  transmissionId?: string; // Z-Benefit Claims Web Service Request ID
+  receiptNo?: string; // PhilHealth Z-Benefit Claim Receipt Key
+  claimSeriesLnk?: string; // External Z-Benefit Claim Series Link ID
+  errorDetails?: string; // Z-Benefit claim error/fault response
   createdAt: string;
 }
 

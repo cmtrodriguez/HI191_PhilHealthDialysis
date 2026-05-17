@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS pdd_sessions;
 DROP TABLE IF EXISTS pdd_registrations;
 DROP TABLE IF EXISTS pdd_doctors;
 
--- 1. ACCREDITED NEPHROLOGISTS TABLE
+-- 1. ACCREDITED NEPHROLOGISTS TABLE (PROD-READY SPECIALIST REGISTRY)
 CREATE TABLE pdd_doctors (
   id TEXT PRIMARY KEY,
   first TEXT NOT NULL,
@@ -19,10 +19,11 @@ CREATE TABLE pdd_doctors (
   email TEXT NOT NULL,
   isActive BOOLEAN DEFAULT TRUE,
   signatureUrl TEXT NOT NULL,
+  accreditationVerified BOOLEAN DEFAULT TRUE, -- Checked against official PhilHealth Accreditation Registry
   createdAt TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. PATIENT INTAKE REGISTRATIONS TABLE
+-- 2. PATIENT INTAKE REGISTRATIONS TABLE (PROD-READY CLINICAL REGISTRY)
 CREATE TABLE pdd_registrations (
   id TEXT PRIMARY KEY,
   regType TEXT NOT NULL DEFAULT 'New Registration',
@@ -42,10 +43,15 @@ CREATE TABLE pdd_registrations (
   admin JSONB NOT NULL,       -- Format: {pddRegNo, registeredBy, accreditationNo, registrationDate}
   recordStatus TEXT NOT NULL DEFAULT 'Pending', -- 'Pending' | 'Active' | 'Rejected'
   pdfUrl TEXT DEFAULT '',     -- Cloud URL for certified PhilHealth PDF
+  memberVerified BOOLEAN DEFAULT FALSE,       -- Authenticated against National Health Insurance Database
+  transmissionStatus TEXT DEFAULT 'Draft',     -- 'Draft' | 'Transmitting' | 'Transmitted' | 'Receipted' | 'Failed'
+  transmissionId TEXT DEFAULT '',             -- External SOAP/REST API Transmission ID
+  receiptNo TEXT DEFAULT '',                  -- Official PhilHealth Electronic Receipt (e-Receipt) Identifier
+  errorDetails TEXT DEFAULT '',               -- Raw verification/transmission error descriptions from external API
   createdAt TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. DIALYSIS TREATMENT SESSIONS TABLE
+-- 3. DIALYSIS TREATMENT SESSIONS TABLE (PROD-READY CLAIMS REGISTRY)
 CREATE TABLE pdd_sessions (
   id TEXT PRIMARY KEY,
   registrationId TEXT NOT NULL REFERENCES pdd_registrations(id) ON DELETE CASCADE,
@@ -55,6 +61,11 @@ CREATE TABLE pdd_sessions (
   claimStatus TEXT NOT NULL DEFAULT 'submitted', -- 'submitted' | 'approved' | 'rejected' | 'rth'
   amountClaimed NUMERIC NOT NULL DEFAULT 6350,
   rthReason TEXT DEFAULT '',
+  transmissionStatus TEXT DEFAULT 'Draft',     -- 'Draft' | 'Transmitting' | 'Transmitted' | 'Receipted' | 'Failed'
+  transmissionId TEXT DEFAULT '',             -- Z-Benefit Claims Web Service Request ID
+  receiptNo TEXT DEFAULT '',                  -- PhilHealth Z-Benefit Claim Receipt Key
+  claimSeriesLnk TEXT DEFAULT '',             -- External Z-Benefit Claim Series Link ID
+  errorDetails TEXT DEFAULT '',               -- Claims processing faults
   createdAt TIMESTAMPTZ DEFAULT NOW()
 );
 
