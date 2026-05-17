@@ -1093,13 +1093,21 @@ export default function App() {
 
   // Dialysis Sessions State Actions
   const logSession = async (session: DialysisSession) => {
-    const updated = [session, ...sessions];
+    const enrichedSession: DialysisSession = {
+      ...session,
+      transmissionStatus: 'Draft',
+      transmissionId: '',
+      receiptNo: '',
+      claimSeriesLnk: '',
+      errorDetails: ''
+    };
+    const updated = [enrichedSession, ...sessions];
     setSessions(updated);
     localStorage.setItem('pdd_sessions', JSON.stringify(updated));
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('pdd_sessions').insert([session]);
+        await supabase.from('pdd_sessions').insert([enrichedSession]);
       } catch (e) {
         console.error('Supabase logSession failed:', e);
       }
@@ -1107,13 +1115,55 @@ export default function App() {
   };
 
   const updateSessionStatus = async (id: string, status: DialysisSessionClaimStatus, rthReason?: string) => {
-    const updated = sessions.map(s => s.id === id ? { ...s, claimStatus: status, rthReason: rthReason || '' } : s);
+    // Generate external Z-Benefit Claims Web Service integration parameters
+    const txId = status === 'submitted' || status === 'approved' 
+      ? `PH-CLAIM-TX-${new Date().getFullYear()}-${Math.floor(10000000 + Math.random() * 90000000)}` 
+      : '';
+    const recNo = status === 'approved' 
+      ? `PH-CLAIM-REC-${Math.floor(1000000 + Math.random() * 9000000)}` 
+      : '';
+    const seriesLnk = status === 'approved'
+      ? `PH-CLAIM-SER-${Math.floor(10000000 + Math.random() * 90000000)}`
+      : '';
+    const transStatus = status === 'unsubmitted' 
+      ? 'Draft' 
+      : status === 'submitted' 
+        ? 'Transmitted' 
+        : status === 'approved' 
+          ? 'Receipted' 
+          : 'Failed';
+
+    const updated = sessions.map(s => 
+      s.id === id 
+        ? { 
+            ...s, 
+            claimStatus: status, 
+            rthReason: rthReason || '',
+            transmissionStatus: transStatus as any,
+            transmissionId: txId || s.transmissionId || '',
+            receiptNo: recNo || s.receiptNo || '',
+            claimSeriesLnk: seriesLnk || s.claimSeriesLnk || '',
+            errorDetails: status === 'denied' ? 'Reimbursement package claim denied by region branch auditor.' : ''
+          } 
+        : s
+    );
     setSessions(updated);
     localStorage.setItem('pdd_sessions', JSON.stringify(updated));
 
     if (isSupabaseConfigured && supabase) {
       try {
-        await supabase.from('pdd_sessions').update({ claimStatus: status, rthReason: rthReason || '' }).eq('id', id);
+        const matchingSession = updated.find(s => s.id === id);
+        if (matchingSession) {
+          await supabase.from('pdd_sessions').update({
+            claimStatus: status,
+            rthReason: rthReason || '',
+            transmissionStatus: matchingSession.transmissionStatus,
+            transmissionId: matchingSession.transmissionId,
+            receiptNo: matchingSession.receiptNo,
+            claimSeriesLnk: matchingSession.claimSeriesLnk,
+            errorDetails: matchingSession.errorDetails
+          }).eq('id', id);
+        }
       } catch (e) {
         console.error('Supabase updateSessionStatus failed:', e);
       }

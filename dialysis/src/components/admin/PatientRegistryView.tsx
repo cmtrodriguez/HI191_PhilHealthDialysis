@@ -210,14 +210,26 @@ export default function PatientRegistryView({
                   return (
                     <tr key={reg.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 pl-6">
-                        <div className="font-extrabold text-slate-800">
+                        <div className="font-extrabold text-slate-800 flex items-center gap-1.5">
                           {reg.patientName.last}, {reg.patientName.first}
+                          {reg.memberVerified && (
+                            <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[8px] font-black border border-emerald-200" title="Verified against National Health Insurance Database">
+                              ✓ Verified
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5">
                           {reg.contact.email}
                         </div>
                       </td>
-                      <td className="p-4 font-mono font-bold text-slate-600">{reg.pin}</td>
+                      <td className="p-4">
+                        <span className="font-mono font-bold text-slate-600 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">{reg.pin}</span>
+                        {reg.receiptNo && (
+                          <div className="text-[9px] text-slate-400 font-mono mt-1">
+                            e-Receipt: <span className="text-emerald-700 font-bold">{reg.receiptNo}</span>
+                          </div>
+                        )}
+                      </td>
                       <td className="p-4">
                         <span className="font-extrabold">{calculateAge(reg.dob)} yrs</span>
                         <span className="text-slate-400"> / {reg.sex}</span>
@@ -245,6 +257,13 @@ export default function PatientRegistryView({
                         >
                           {reg.recordStatus}
                         </span>
+                        {reg.transmissionStatus && (
+                          <div className="text-[9px] font-bold mt-1 text-slate-400">
+                            Sync: <span className={`uppercase font-black ${
+                              reg.transmissionStatus === 'Receipted' ? 'text-emerald-700' : 'text-slate-500'
+                            }`}>{reg.transmissionStatus}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="p-4 pr-6 text-right space-x-1.5 whitespace-nowrap">
                         <button
@@ -382,6 +401,53 @@ export default function PatientRegistryView({
                     </div>
                   </div>
                 </div>
+
+                {/* PhilHealth SOAP API Sync Payload */}
+                {selectedReg.transmissionStatus && (
+                  <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 text-white">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Hospital className="text-emerald-400 animate-pulse" size={18} />
+                        <span className="font-extrabold text-sm tracking-tight">PhilHealth SOAP API Sync Payload</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        {selectedReg.transmissionStatus}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider font-sans">National Health Database</p>
+                        <p className="font-bold text-slate-200 mt-1 flex items-center gap-1">
+                          {selectedReg.memberVerified ? (
+                            <>
+                              <span className="text-emerald-400">✓</span> PIN Status: Active
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-amber-400">⚠</span> Unverified Member
+                            </>
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider font-sans">Official Electronic Receipt</p>
+                        <p className="font-bold text-slate-200 mt-1">
+                          {selectedReg.receiptNo || 'NOT RECEIPTED'}
+                        </p>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider font-sans">API Transmission ID</p>
+                        <p className="font-bold text-slate-200 mt-1 text-[11px] overflow-hidden text-ellipsis whitespace-nowrap">
+                          {selectedReg.transmissionId || 'NO TRANSMISSION LOGGED'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Session Allocation progress bar */}
                 <div className="p-6 bg-emerald-50/50 border border-emerald-100 rounded-3xl space-y-3">

@@ -219,8 +219,13 @@ export default function SessionTrackerView({
                         <div className="font-extrabold text-slate-800">
                           {patient ? `${patient.patientName.first} ${patient.patientName.last}` : 'Unknown Patient'}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          PIN: {patient ? patient.pin : 'N/A'}
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
+                          <span>PIN: {patient ? patient.pin : 'N/A'}</span>
+                          {session.receiptNo && (
+                            <span className="text-emerald-700 font-bold bg-emerald-50 px-1 rounded border border-emerald-100/50">
+                              e-Receipt: {session.receiptNo}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="p-4">
@@ -237,8 +242,13 @@ export default function SessionTrackerView({
                         <div className="font-extrabold text-slate-800">
                           Dr. {doctor ? `${doctor.first} ${doctor.last}` : 'N/A'}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                          Station Machine: #{session.machineNo}
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5 flex flex-wrap gap-x-2">
+                          <span>Machine: #{session.machineNo}</span>
+                          {session.claimSeriesLnk && (
+                            <span className="text-emerald-800 bg-emerald-50/30 px-1 rounded font-mono text-[9px] normal-case font-extrabold border border-emerald-100/20">
+                              Series Lnk: {session.claimSeriesLnk}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="p-4 font-extrabold text-emerald-700">
@@ -251,6 +261,11 @@ export default function SessionTrackerView({
                           {session.claimStatus === 'rth' && <AlertTriangle size={10} />}
                           {session.claimStatus}
                         </span>
+                        {session.transmissionStatus && (
+                          <div className="text-[9px] font-black mt-1 text-slate-400 uppercase tracking-widest">
+                            Sync: <span className="text-emerald-700 font-extrabold">{session.transmissionStatus}</span>
+                          </div>
+                        )}
                         {session.claimStatus === 'rth' && session.rthReason && (
                           <p className="text-[9px] text-yellow-700 mt-1 font-bold italic max-w-[150px] mx-auto truncate" title={session.rthReason}>
                             "{session.rthReason}"
