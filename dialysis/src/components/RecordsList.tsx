@@ -57,7 +57,11 @@ export default function RecordsList({
       return;
     }
 
-    downloadPddRegistrationPdf(latestRegistration);
+    if (latestRegistration.pdfUrl) {
+      window.open(latestRegistration.pdfUrl, '_blank');
+    } else {
+      downloadPddRegistrationPdf(latestRegistration);
+    }
   };
 
   // PDF LAYOUT EDITOR HANDLER - hidden for production, keep for future debugging
@@ -251,9 +255,15 @@ export default function RecordsList({
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            onClick={() => downloadPddRegistrationPdf(reg)}
+                            onClick={() => {
+                              if (reg.pdfUrl) {
+                                window.open(reg.pdfUrl, '_blank');
+                              } else {
+                                downloadPddRegistrationPdf(reg);
+                              }
+                            }}
                             className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                            title="Download Filled Dialysis Form"
+                            title={reg.pdfUrl ? "View Certified Cloud PDF" : "Download Filled Dialysis Form"}
                           >
                             <Download className="w-4 h-4" />
                           </button>

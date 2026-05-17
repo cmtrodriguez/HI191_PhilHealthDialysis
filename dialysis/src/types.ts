@@ -79,6 +79,7 @@ export interface PDDRegistration {
   pdDetails: PDDetails;
   admin: RegistrationAdmin;
   recordStatus: RecordStatus;
+  pdfUrl?: string; // Cloud URL for certified PhilHealth PDF
   createdAt: string;
 }
 

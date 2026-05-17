@@ -41,6 +41,7 @@ CREATE TABLE pdd_registrations (
   pdDetails JSONB NOT NULL,   -- Format: {system}
   admin JSONB NOT NULL,       -- Format: {pddRegNo, registeredBy, accreditationNo, registrationDate}
   recordStatus TEXT NOT NULL DEFAULT 'Pending', -- 'Pending' | 'Active' | 'Rejected'
+  pdfUrl TEXT DEFAULT '',     -- Cloud URL for certified PhilHealth PDF
   createdAt TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -154,3 +155,28 @@ INSERT INTO pdd_registrations (id, regType, pin, patientName, memberType, dob, s
 INSERT INTO pdd_sessions (id, registrationId, sessionDate, attendingNephrologistId, machineNo, claimStatus, amountClaimed, rthReason) VALUES
 ('session_maria_rth_1', 'reg_3', '2026-05-10', 'doc_2', '05', 'rth', 6350, 'PRC License Accreditation Number out of sync'),
 ('session_maria_rth_2', 'reg_3', '2026-05-12', 'doc_2', '05', 'rth', 6350, 'PIN and Member Birthdate mismatch on regional databases');
+
+-- ==========================================
+# SUPABASE STORAGE CONFIGURATION (BUCKETS & POLICIES)
+-- ==========================================
+
+-- 1. Initialize Doctor Signature Stamps Storage Bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('doctor-stamps', 'doctor-stamps', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 2. Initialize Patient Certified Forms Storage Bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('registration-pdfs', 'registration-pdfs', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. Set up Storage Security Policies (Public read/write for sandbox accessibility)
+CREATE POLICY "Public Read Doctor Stamps" ON storage.objects FOR SELECT USING (bucket_id = 'doctor-stamps');
+CREATE POLICY "Public Write Doctor Stamps" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'doctor-stamps');
+CREATE POLICY "Public Update Doctor Stamps" ON storage.objects FOR UPDATE USING (bucket_id = 'doctor-stamps');
+CREATE POLICY "Public Delete Doctor Stamps" ON storage.objects FOR DELETE USING (bucket_id = 'doctor-stamps');
+
+CREATE POLICY "Public Read Certified PDFs" ON storage.objects FOR SELECT USING (bucket_id = 'registration-pdfs');
+CREATE POLICY "Public Write Certified PDFs" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'registration-pdfs');
+CREATE POLICY "Public Update Certified PDFs" ON storage.objects FOR UPDATE USING (bucket_id = 'registration-pdfs');
+CREATE POLICY "Public Delete Certified PDFs" ON storage.objects FOR DELETE USING (bucket_id = 'registration-pdfs');

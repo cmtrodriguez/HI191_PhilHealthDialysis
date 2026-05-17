@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, User, Search, MapPin, Eye, CheckCircle2, X, FileSignature } from 'lucide-react';
 import type { PDDRegistration, Nephrologist } from '../../types';
 import { buildPddRegistrationPdfBytes } from '../../utils/exportPddPdf';
+import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
 
 interface PddValidationQueueViewProps {
   registrations: PDDRegistration[];
@@ -64,6 +65,8 @@ export default function PddValidationQueueView({
       },
     };
 
+    let uploadedPdfUrl = '';
+
     // Download the PDF immediately as part of HCI workflow
     try {
       const pdfBytes = await buildPddRegistrationPdfBytes({
@@ -72,6 +75,32 @@ export default function PddValidationQueueView({
       } as any);
       
       const blob = new Blob([pdfBytes as any], { type: 'application/pdf' });
+
+      // If Supabase is active, upload the PDF directly to our cloud bucket!
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const fileName = `certified_pdd_${approvedReg.id}_${Date.now()}.pdf`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('registration-pdfs')
+            .upload(fileName, blob, {
+              contentType: 'application/pdf',
+              cacheControl: '3600',
+              upsert: true
+            });
+
+          if (!uploadError && uploadData) {
+            const { data: urlData } = supabase.storage
+              .from('registration-pdfs')
+              .getPublicUrl(fileName);
+            if (urlData?.publicUrl) {
+              uploadedPdfUrl = urlData.publicUrl;
+            }
+          }
+        } catch (storageErr) {
+          console.error('Supabase PDF Storage upload failed:', storageErr);
+        }
+      }
+
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -84,7 +113,12 @@ export default function PddValidationQueueView({
       console.error('PDF overlay failed', err);
     }
 
-    onApproveRegistration(selectedReg.id, approvedReg);
+    const finalApprovedReg: PDDRegistration = {
+      ...approvedReg,
+      pdfUrl: uploadedPdfUrl
+    };
+
+    onApproveRegistration(selectedReg.id, finalApprovedReg);
     setSelectedReg(null);
   };
 

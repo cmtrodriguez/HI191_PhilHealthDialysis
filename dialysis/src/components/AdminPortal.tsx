@@ -26,6 +26,7 @@ import PatientRegistryView from './admin/PatientRegistryView';
 import PddValidationQueueView from './admin/PddValidationQueueView';
 import SessionTrackerView from './admin/SessionTrackerView';
 import DoctorsDirectoryView from './admin/DoctorsDirectoryView';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
 
 import type { PDDRegistration, DialysisSession, Nephrologist, DialysisSessionClaimStatus } from '../types';
 
@@ -526,14 +527,64 @@ export default function AdminPortal({
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[10px] uppercase tracking-wider text-slate-400 block mb-1">Digital Signature Stamp (Data URL / Image Link)</label>
-                    <input
-                      type="text"
-                      value={signatureStamp}
-                      onChange={(e) => setSignatureStamp(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 transition-all text-slate-700 font-mono text-[10px]"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-slate-400 block mb-1">Upload Signature Stamp Image</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // Show visual preview instantly
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            if (evt.target?.result) {
+                              setSignatureStamp(evt.target.result as string);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+
+                          // Upload to Supabase bucket 'doctor-stamps' if configured
+                          if (isSupabaseConfigured && supabase) {
+                            try {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `stamp_${activeDoctorId}_${Date.now()}.${fileExt}`;
+                              
+                              const { data, error } = await supabase.storage
+                                .from('doctor-stamps')
+                                .upload(fileName, file, {
+                                  contentType: file.type,
+                                  cacheControl: '3600',
+                                  upsert: true
+                                });
+
+                              if (!error && data) {
+                                const { data: urlData } = supabase.storage
+                                  .from('doctor-stamps')
+                                  .getPublicUrl(fileName);
+                                if (urlData?.publicUrl) {
+                                  setSignatureStamp(urlData.publicUrl);
+                                }
+                              }
+                            } catch (err) {
+                              console.error('Supabase Stamp Storage upload failed:', err);
+                            }
+                          }
+                        }}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 transition-all text-slate-700 font-bold text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-slate-400 block mb-1">Digital Signature Stamp (Data URL / Image Link)</label>
+                      <input
+                        type="text"
+                        value={signatureStamp}
+                        onChange={(e) => setSignatureStamp(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-emerald-500 transition-all text-slate-700 font-mono text-[10px]"
+                      />
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-slate-100 flex justify-end">

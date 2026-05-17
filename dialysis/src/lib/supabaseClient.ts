@@ -3,8 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Validate config
+// Validate config (do not connect during unit tests to ensure offline reliability)
 export const isSupabaseConfigured = 
+  import.meta.env.MODE !== 'test' &&
   Boolean(supabaseUrl) && 
   Boolean(supabaseAnonKey) && 
   supabaseUrl !== 'YOUR_SUPABASE_URL' && 
