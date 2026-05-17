@@ -81,3 +81,30 @@ export interface PDDRegistration {
   recordStatus: RecordStatus;
   createdAt: string;
 }
+
+export interface Nephrologist {
+  id: string;
+  first: string;
+  last: string;
+  prcLicenseNo: string;
+  panNo: string; // PhilHealth Accreditation Number (PAN)
+  email: string;
+  isActive: boolean;
+  signatureUrl?: string; // Digital Signature file/data URL
+}
+
+export type DialysisSessionClaimStatus = 'unsubmitted' | 'submitted' | 'approved' | 'denied' | 'rth';
+
+export interface DialysisSession {
+  id: string;
+  registrationId: string;
+  sessionDate: string;
+  attendingNephrologistId: string;
+  machineNo: string;
+  claimStatus: DialysisSessionClaimStatus;
+  claimRefNo?: string;
+  amountClaimed: number; // usually 6350.00 pesos
+  rthReason?: string; // Reason for Return To Hospital
+  createdAt: string;
+}
+

@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import philhealthLogo from './assets/philhealth-logo.png';
+import doctorSignatureStamp from './assets/doctor_signature_stamp.png';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -21,10 +22,13 @@ import {
 } from 'lucide-react';
 
 // Types and Component Imports
-import { PDDRegistration } from './types.ts';
+import { PDDRegistration, Nephrologist, DialysisSession, DialysisSessionClaimStatus } from './types.ts';
 import Dashboard from './components/Dashboard.tsx';
 import RegistrationForm from './components/RegistrationForm.tsx';
 import RecordsList from './components/RecordsList.tsx';
+import PersonaSwitcher, { UserRole } from './components/PersonaSwitcher.tsx';
+import AdminPortal from './components/AdminPortal.tsx';
+import { isSupabaseConfigured, supabase } from './lib/supabaseClient.ts';
 
 type View = 'home' | 'apply' | 'my-records' | 'profile';
 type PublicView = 'landing' | 'login' | 'signup' | 'portal';
@@ -529,69 +533,682 @@ function SignupPage({ onSignup }: { onSignup: () => void }) {
 }
 
 export default function App() {
+  const [role, setRole] = useState<UserRole>('patient');
   const [publicView, setPublicView] = useState<PublicView>(() => getViewFromPath());
   const [activeView, setActiveView] = useState<View>('home');
+  
+  const [adminActiveView, setAdminActiveView] = useState('dashboard');
+  const [tourActive, setTourActive] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [isTourPlaying, setIsTourPlaying] = useState(false);
+
   const [registrations, setRegistrations] = useState<PDDRegistration[]>([]);
+  const [doctors, setDoctors] = useState<Nephrologist[]>([]);
+  const [sessions, setSessions] = useState<DialysisSession[]>([]);
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-useEffect(() => {
-  const syncRoute = () => {
-    setPublicView(getViewFromPath());
+  const TOUR_STEPS = [
+    {
+      title: "St. Jude Renal Center Landing Page",
+      description: "Welcome to the PhilHealth Dialysis Registry. The presentation begins on the patient-facing portal landing dashboard.",
+      role: "patient" as UserRole,
+      publicView: "landing" as PublicView,
+      activeView: "home" as View
+    },
+    {
+      title: "Patient Self-Service Enrollment Intake",
+      description: "Patient Juan Dela Cruz completes the multi-page registration form declaring Stage 5 CKD and Z-Benefits eligibility.",
+      role: "patient" as UserRole,
+      publicView: "portal" as PublicView,
+      activeView: "apply" as View
+    },
+    {
+      title: "Registry Application Tracking",
+      description: "Juan's application is sent to the central hospital queue and logs securely as 'Pending' verification.",
+      role: "patient" as UserRole,
+      publicView: "portal" as PublicView,
+      activeView: "my-records" as View
+    },
+    {
+      title: "HCI Billing & Financial Estimations",
+      description: "Switching roles to Billing Encoder Maria Santos. Pointing out projected dialysis revenues (₱6,350 package rate) and mending Return-to-Hospital (RTH) claims.",
+      role: "admin_encoder" as UserRole,
+      publicView: "portal" as PublicView,
+      adminView: "dashboard"
+    },
+    {
+      title: "PDD Queue Review & Certified PDF Export",
+      description: "Maria validates Juan's case file, binds accredited specialist Dr. Perez, and downloads the certified overlay PDF with digital stamp verified.",
+      role: "admin_encoder" as UserRole,
+      publicView: "portal" as PublicView,
+      adminView: "pdd-queue"
+    },
+    {
+      title: "156 Session Limit Coverage Tracking",
+      description: "Monitoring session coverage caps (156 max per year). Highlighting depletion red-warning metrics as logs approach limit.",
+      role: "admin_encoder" as UserRole,
+      publicView: "portal" as PublicView,
+      adminView: "session-tracker"
+    },
+    {
+      title: "Specialist Attending Physician Workspace",
+      description: "Switching to Nephrologist Dr. Perez's dashboard. Attending doctors focus strictly on patient prescription sheets and signing clinical sessions.",
+      role: "doctor" as UserRole,
+      publicView: "portal" as PublicView,
+      adminView: "doctor-patients"
+    },
+    {
+      title: "PRC Accreditation & Signature Stamp Setup",
+      description: "Dr. Perez verifies his specialist credentials and PRC seal. The clinical registry flow is fully complete!",
+      role: "doctor" as UserRole,
+      publicView: "portal" as PublicView,
+      adminView: "doctor-profile"
+    }
+  ];
+
+  const applyTourStep = (stepIndex: number) => {
+    const step = TOUR_STEPS[stepIndex];
+    if (!step) return;
+
+    setRole(step.role);
+    if (step.publicView) {
+      setPublicView(step.publicView);
+      window.history.pushState(null, '', step.publicView === 'portal' ? '/portal' : '/');
+    }
+    if (step.activeView) {
+      setActiveView(step.activeView);
+    }
+    if (step.adminView) {
+      setAdminActiveView(step.adminView);
+    }
   };
 
-  window.addEventListener('popstate', syncRoute);
-  syncRoute();
-
-  return () => window.removeEventListener('popstate', syncRoute);
-}, []);
-
-  // Load from local storage
   useEffect(() => {
-    const saved = localStorage.getItem('pdd_registrations');
-    if (saved) {
-      try {
-        setRegistrations(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to load registrations', e);
-      }
+    let interval: any;
+    if (tourActive && isTourPlaying) {
+      interval = setInterval(() => {
+        setTourStep((prev) => {
+          if (prev >= TOUR_STEPS.length - 1) {
+            setIsTourPlaying(false);
+            return prev;
+          }
+          const nextStep = prev + 1;
+          applyTourStep(nextStep);
+          return nextStep;
+        });
+      }, 7000); // 7 seconds per slide
     }
+    return () => clearInterval(interval);
+  }, [tourActive, isTourPlaying]);
+
+  // Sync routes
+  useEffect(() => {
+    const syncRoute = () => {
+      setPublicView(getViewFromPath());
+    };
+    window.addEventListener('popstate', syncRoute);
+    syncRoute();
+    return () => window.removeEventListener('popstate', syncRoute);
   }, []);
 
-const navigateTo = (view: PublicView) => {
-  const routes: Record<PublicView, string> = {
-    landing: '/',
-    login: '/login',
-    signup: '/signup',
-    portal: '/portal',
+  // Database Seeding Logic
+  const seedDemoData = () => {
+    const defaultDoctors: Nephrologist[] = [
+      {
+        id: 'doc_1',
+        first: 'Edgardo',
+        last: 'Perez',
+        prcLicenseNo: '0098765',
+        panNo: '99-012345678-0',
+        email: 'edgardo.perez@hospital.gov.ph',
+        isActive: true,
+        signatureUrl: doctorSignatureStamp
+      },
+      {
+        id: 'doc_2',
+        first: 'Maria',
+        last: 'Santos',
+        prcLicenseNo: '0054321',
+        panNo: '99-876543210-9',
+        email: 'maria.santos@hospital.gov.ph',
+        isActive: true,
+        signatureUrl: doctorSignatureStamp
+      },
+      {
+        id: 'doc_3',
+        first: 'Jose',
+        last: 'Reyes',
+        prcLicenseNo: '0077777',
+        panNo: '99-555555555-5',
+        email: 'jose.reyes@hospital.gov.ph',
+        isActive: false,
+        signatureUrl: doctorSignatureStamp
+      }
+    ];
+
+    const defaultRegistrations: PDDRegistration[] = [
+      {
+        id: 'reg_1',
+        regType: 'New Registration',
+        pin: '12-345678901-2',
+        patientName: { first: 'Juan', last: 'Dela Cruz', middle: 'Santos', extension: '' },
+        memberType: 'Principal Member',
+        dob: '1985-05-15',
+        sex: 'Male',
+        civilStatus: 'Married',
+        address: { unit: '12', building: 'Tower A', lot: '45', street: 'Mabini', subdivision: 'Residences', barangay: 'Barangay 669', city: 'Ermita', province: 'Metro Manila', country: 'Philippines', zip: '1000' },
+        contact: { email: 'juan.delacruz@example.com', mobile: '09171234567', landline: '028123456' },
+        zBenefits: { pdFirstPolicy: false, kidneyTransplant: false },
+        previousAvailment: { kidneyTransplant: false },
+        dialysisStartDate: '2026-01-10',
+        hdDetails: { type: 'Low flux' },
+        pdDetails: { system: '' },
+        admin: { pddRegNo: 'PDD-998811', registeredBy: 'Maria Santos (HCI Encoder)', accreditationNo: 'HCI-123456', registrationDate: '2026-01-12' },
+        recordStatus: 'Active',
+        createdAt: '2026-01-10T08:00:00.000Z'
+      },
+      {
+        id: 'reg_2',
+        regType: 'New Registration',
+        pin: '99-888888888-9',
+        patientName: { first: 'Pedro', last: 'Penduko', middle: 'Agua', extension: '' },
+        memberType: 'Dependent',
+        dob: '1992-09-20',
+        sex: 'Male',
+        civilStatus: 'Single',
+        address: { unit: '3B', building: 'Green Plaza', lot: '12', street: 'Rizal Ave', subdivision: '', barangay: 'Barangay 12', city: 'Pasay', province: 'Metro Manila', country: 'Philippines', zip: '1300' },
+        contact: { email: 'pedro.penduko@example.com', mobile: '09187654321', landline: '' },
+        zBenefits: { pdFirstPolicy: true, kidneyTransplant: false },
+        previousAvailment: { kidneyTransplant: false },
+        dialysisStartDate: '2026-05-01',
+        hdDetails: { type: 'Low flux' },
+        pdDetails: { system: 'CAPD' },
+        admin: { pddRegNo: '', registeredBy: '', accreditationNo: '', registrationDate: '' },
+        recordStatus: 'Pending',
+        createdAt: '2026-05-15T10:30:00.000Z'
+      },
+      {
+        id: 'reg_3',
+        regType: 'New Registration',
+        pin: '11-222333444-5',
+        patientName: { first: 'Maria', last: 'Clara', middle: 'Ibarra', extension: '' },
+        memberType: 'Principal Member',
+        dob: '1978-11-30',
+        sex: 'Female',
+        civilStatus: 'Single',
+        address: { unit: 'Suite 9', building: 'Rizal Mansions', lot: '', street: 'Taft Ave', subdivision: '', barangay: 'Barangay 700', city: 'Malate', province: 'Metro Manila', country: 'Philippines', zip: '1004' },
+        contact: { email: 'maria.clara@example.com', mobile: '09223344556', landline: '028776655' },
+        zBenefits: { pdFirstPolicy: false, kidneyTransplant: false },
+        previousAvailment: { kidneyTransplant: false },
+        dialysisStartDate: '2025-08-15',
+        hdDetails: { type: 'High flux' },
+        pdDetails: { system: '' },
+        admin: { pddRegNo: 'PDD-776655', registeredBy: 'Maria Santos (HCI Encoder)', accreditationNo: 'HCI-123456', registrationDate: '2025-08-16' },
+        recordStatus: 'Active',
+        createdAt: '2025-08-15T09:15:00.000Z'
+      }
+    ];
+
+    const defaultSessions: DialysisSession[] = [];
+    // Generate sessions for Juan Dela Cruz (reg_1)
+    for (let i = 1; i <= 15; i++) {
+      defaultSessions.push({
+        id: `session_juan_${i}`,
+        registrationId: 'reg_1',
+        sessionDate: `2026-04-${String(i).padStart(2, '0')}`,
+        attendingNephrologistId: 'doc_1',
+        machineNo: '03',
+        claimStatus: 'approved',
+        amountClaimed: 6350,
+        createdAt: new Date().toISOString()
+      });
+    }
+    // Generate sessions for Maria Clara (reg_3) - 140 approved, 2 Return To Hospital (RTH)
+    for (let i = 1; i <= 140; i++) {
+      defaultSessions.push({
+        id: `session_maria_${i}`,
+        registrationId: 'reg_3',
+        sessionDate: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`,
+        attendingNephrologistId: 'doc_2',
+        machineNo: '05',
+        claimStatus: 'approved',
+        amountClaimed: 6350,
+        createdAt: new Date().toISOString()
+      });
+    }
+    // Add 2 RTH sessions
+    defaultSessions.push({
+      id: `session_maria_rth_1`,
+      registrationId: 'reg_3',
+      sessionDate: '2026-05-10',
+      attendingNephrologistId: 'doc_2',
+      machineNo: '05',
+      claimStatus: 'rth',
+      amountClaimed: 6350,
+      rthReason: 'PRC License Accreditation Number out of sync',
+      createdAt: new Date().toISOString()
+    });
+    defaultSessions.push({
+      id: `session_maria_rth_2`,
+      registrationId: 'reg_3',
+      sessionDate: '2026-05-12',
+      attendingNephrologistId: 'doc_2',
+      machineNo: '05',
+      claimStatus: 'rth',
+      amountClaimed: 6350,
+      rthReason: 'PIN and Member Birthdate mismatch on regional databases',
+      createdAt: new Date().toISOString()
+    });
+
+    localStorage.setItem('pdd_doctors', JSON.stringify(defaultDoctors));
+    localStorage.setItem('pdd_registrations', JSON.stringify(defaultRegistrations));
+    localStorage.setItem('pdd_sessions', JSON.stringify(defaultSessions));
+
+    setDoctors(defaultDoctors);
+    setRegistrations(defaultRegistrations);
+    setSessions(defaultSessions);
+    alert('Demo Sandbox seeded with 3 Doctors, 3 Patients, and 157 historical Dialysis claims.');
   };
 
-  setPublicView(view);
-  window.history.pushState(null, '', routes[view]);
-  window.scrollTo(0, 0);
-};
+  const resetDemoData = () => {
+    localStorage.removeItem('pdd_doctors');
+    localStorage.removeItem('pdd_registrations');
+    localStorage.removeItem('pdd_sessions');
+    setDoctors([]);
+    setRegistrations([]);
+    setSessions([]);
+    alert('Local storage database cleared. App is now completely clean.');
+  };
+  // Load from local storage and Supabase on startup
+  useEffect(() => {
+    const loadStartupData = async () => {
+      const savedRegs = localStorage.getItem('pdd_registrations');
+      const savedDocs = localStorage.getItem('pdd_doctors');
+      const savedSessions = localStorage.getItem('pdd_sessions');
+
+      if (savedRegs) {
+        try { setRegistrations(JSON.parse(savedRegs)); } catch (e) { console.error(e); }
+      }
+      if (savedDocs) {
+        try {
+          const parsed = JSON.parse(savedDocs);
+          const migrated = parsed.map((doc: any) => {
+            if (!doc.signatureUrl || doc.signatureUrl.includes('raw.githubusercontent.com') || doc.signatureUrl.includes('user-attachments')) {
+              return { ...doc, signatureUrl: doctorSignatureStamp };
+            }
+            return doc;
+          });
+          setDoctors(migrated);
+          localStorage.setItem('pdd_doctors', JSON.stringify(migrated));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      if (savedSessions) {
+        try { setSessions(JSON.parse(savedSessions)); } catch (e) { console.error(e); }
+      }
+
+      // Auto-seed on first launch if database is clean
+      if (!savedRegs && !savedDocs && !savedSessions) {
+        const defaultDoctors: Nephrologist[] = [
+          {
+            id: 'doc_1',
+            first: 'Edgardo',
+            last: 'Perez',
+            prcLicenseNo: '0098765',
+            panNo: '99-012345678-0',
+            email: 'edgardo.perez@hospital.gov.ph',
+            isActive: true,
+            signatureUrl: doctorSignatureStamp
+          },
+          {
+            id: 'doc_2',
+            first: 'Maria',
+            last: 'Santos',
+            prcLicenseNo: '0054321',
+            panNo: '99-876543210-9',
+            email: 'maria.santos@hospital.gov.ph',
+            isActive: true,
+            signatureUrl: doctorSignatureStamp
+          },
+          {
+            id: 'doc_3',
+            first: 'Jose',
+            last: 'Reyes',
+            prcLicenseNo: '0077777',
+            panNo: '99-555555555-5',
+            email: 'jose.reyes@hospital.gov.ph',
+            isActive: false,
+            signatureUrl: doctorSignatureStamp
+          }
+        ];
+
+        const defaultRegistrations: PDDRegistration[] = [
+          {
+            id: 'reg_1',
+            regType: 'New Registration',
+            pin: '12-345678901-2',
+            patientName: { first: 'Juan', last: 'Dela Cruz', middle: 'Santos', extension: '' },
+            memberType: 'Principal Member',
+            dob: '1985-05-15',
+            sex: 'Male',
+            civilStatus: 'Married',
+            address: { unit: '12', building: 'Tower A', lot: '45', street: 'Mabini', subdivision: 'Residences', barangay: 'Barangay 669', city: 'Ermita', province: 'Metro Manila', country: 'Philippines', zip: '1000' },
+            contact: { email: 'juan.delacruz@example.com', mobile: '09171234567', landline: '028123456' },
+            zBenefits: { pdFirstPolicy: false, kidneyTransplant: false },
+            previousAvailment: { kidneyTransplant: false },
+            dialysisStartDate: '2026-01-10',
+            hdDetails: { type: 'Low flux' },
+            pdDetails: { system: '' },
+            admin: { pddRegNo: 'PDD-998811', registeredBy: 'Maria Santos (HCI Encoder)', accreditationNo: 'HCI-123456', registrationDate: '2026-01-12' },
+            recordStatus: 'Active',
+            createdAt: '2026-01-10T08:00:00.000Z'
+          },
+          {
+            id: 'reg_2',
+            regType: 'New Registration',
+            pin: '99-888888888-9',
+            patientName: { first: 'Pedro', last: 'Penduko', middle: 'Agua', extension: '' },
+            memberType: 'Dependent',
+            dob: '1992-09-20',
+            sex: 'Male',
+            civilStatus: 'Single',
+            address: { unit: '3B', building: 'Green Plaza', lot: '12', street: 'Rizal Ave', subdivision: '', barangay: 'Barangay 12', city: 'Pasay', province: 'Metro Manila', country: 'Philippines', zip: '1300' },
+            contact: { email: 'pedro.penduko@example.com', mobile: '09187654321', landline: '' },
+            zBenefits: { pdFirstPolicy: true, kidneyTransplant: false },
+            previousAvailment: { kidneyTransplant: false },
+            dialysisStartDate: '2026-05-01',
+            hdDetails: { type: 'Low flux' },
+            pdDetails: { system: 'CAPD' },
+            admin: { pddRegNo: '', registeredBy: '', accreditationNo: '', registrationDate: '' },
+            recordStatus: 'Pending',
+            createdAt: '2026-05-15T10:30:00.000Z'
+          },
+          {
+            id: 'reg_3',
+            regType: 'New Registration',
+            pin: '11-222333444-5',
+            patientName: { first: 'Maria', last: 'Clara', middle: 'Ibarra', extension: '' },
+            memberType: 'Principal Member',
+            dob: '1978-11-30',
+            sex: 'Female',
+            civilStatus: 'Single',
+            address: { unit: 'Suite 9', building: 'Rizal Mansions', lot: '', street: 'Taft Ave', subdivision: '', barangay: 'Barangay 700', city: 'Malate', province: 'Metro Manila', country: 'Philippines', zip: '1004' },
+            contact: { email: 'maria.clara@example.com', mobile: '09223344556', landline: '028776655' },
+            zBenefits: { pdFirstPolicy: false, kidneyTransplant: false },
+            previousAvailment: { kidneyTransplant: false },
+            dialysisStartDate: '2025-08-15',
+            hdDetails: { type: 'High flux' },
+            pdDetails: { system: '' },
+            admin: { pddRegNo: 'PDD-776655', registeredBy: 'Maria Santos (HCI Encoder)', accreditationNo: 'HCI-123456', registrationDate: '2025-08-16' },
+            recordStatus: 'Active',
+            createdAt: '2025-08-15T09:15:00.000Z'
+          }
+        ];
+
+        const defaultSessions: DialysisSession[] = [];
+        for (let i = 1; i <= 15; i++) {
+          defaultSessions.push({
+            id: `session_juan_${i}`,
+            registrationId: 'reg_1',
+            sessionDate: `2026-04-${String(i).padStart(2, '0')}`,
+            attendingNephrologistId: 'doc_1',
+            machineNo: '03',
+            claimStatus: 'approved',
+            amountClaimed: 6350,
+            createdAt: new Date().toISOString()
+          });
+        }
+        for (let i = 1; i <= 140; i++) {
+          defaultSessions.push({
+            id: `session_maria_${i}`,
+            registrationId: 'reg_3',
+            sessionDate: `2026-03-${String((i % 28) + 1).padStart(2, '0')}`,
+            attendingNephrologistId: 'doc_2',
+            machineNo: '05',
+            claimStatus: 'approved',
+            amountClaimed: 6350,
+            createdAt: new Date().toISOString()
+          });
+        }
+        defaultSessions.push({
+          id: `session_maria_rth_1`,
+          registrationId: 'reg_3',
+          sessionDate: '2026-05-10',
+          attendingNephrologistId: 'doc_2',
+          machineNo: '05',
+          claimStatus: 'rth',
+          amountClaimed: 6350,
+          rthReason: 'PRC License Accreditation Number out of sync',
+          createdAt: new Date().toISOString()
+        });
+        defaultSessions.push({
+          id: `session_maria_rth_2`,
+          registrationId: 'reg_3',
+          sessionDate: '2026-05-12',
+          attendingNephrologistId: 'doc_2',
+          machineNo: '05',
+          claimStatus: 'rth',
+          amountClaimed: 6350,
+          rthReason: 'PIN and Member Birthdate mismatch on regional databases',
+          createdAt: new Date().toISOString()
+        });
+
+        localStorage.setItem('pdd_doctors', JSON.stringify(defaultDoctors));
+        localStorage.setItem('pdd_registrations', JSON.stringify(defaultRegistrations));
+        localStorage.setItem('pdd_sessions', JSON.stringify(defaultSessions));
+
+        setDoctors(defaultDoctors);
+        setRegistrations(defaultRegistrations);
+        setSessions(defaultSessions);
+      }
+
+      // Silently fetch and sync from Supabase if connected
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data: dbDocs, error: errDocs } = await supabase.from('pdd_doctors').select('*');
+          if (!errDocs && dbDocs && dbDocs.length > 0) {
+            setDoctors(dbDocs);
+            localStorage.setItem('pdd_doctors', JSON.stringify(dbDocs));
+          }
+          const { data: dbRegs, error: errRegs } = await supabase.from('pdd_registrations').select('*');
+          if (!errRegs && dbRegs && dbRegs.length > 0) {
+            setRegistrations(dbRegs);
+            localStorage.setItem('pdd_registrations', JSON.stringify(dbRegs));
+          }
+          const { data: dbSessions, error: errSessions } = await supabase.from('pdd_sessions').select('*');
+          if (!errSessions && dbSessions && dbSessions.length > 0) {
+            setSessions(dbSessions);
+            localStorage.setItem('pdd_sessions', JSON.stringify(dbSessions));
+          }
+        } catch (error) {
+          console.error('Supabase live database fetch failed:', error);
+        }
+      }
+    };
+
+    loadStartupData();
+  }, []);
+
+  const navigateTo = (view: PublicView) => {
+    const routes: Record<PublicView, string> = {
+      landing: '/',
+      login: '/login',
+      signup: '/signup',
+      portal: '/portal',
+    };
+    setPublicView(view);
+    window.history.pushState(null, '', routes[view]);
+    window.scrollTo(0, 0);
+  };
 
   const saveRegistrations = (newRegs: PDDRegistration[]) => {
     setRegistrations(newRegs);
     localStorage.setItem('pdd_registrations', JSON.stringify(newRegs));
   };
 
-  const addRegistration = (reg: PDDRegistration) => {
+  // Attending Doctors State Actions
+  const addDoctor = async (doc: Nephrologist) => {
+    const updated = [doc, ...doctors];
+    setDoctors(updated);
+    localStorage.setItem('pdd_doctors', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_doctors').insert([doc]);
+      } catch (e) {
+        console.error('Supabase addDoctor failed:', e);
+      }
+    }
+  };
+
+  const updateDoctor = async (updatedDoc: Nephrologist) => {
+    const updated = doctors.map(d => d.id === updatedDoc.id ? updatedDoc : d);
+    setDoctors(updated);
+    localStorage.setItem('pdd_doctors', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_doctors').update(updatedDoc).eq('id', updatedDoc.id);
+      } catch (e) {
+        console.error('Supabase updateDoctor failed:', e);
+      }
+    }
+  };
+
+  const deleteDoctor = async (id: string) => {
+    const updated = doctors.filter(d => d.id !== id);
+    setDoctors(updated);
+    localStorage.setItem('pdd_doctors', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_doctors').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase deleteDoctor failed:', e);
+      }
+    }
+  };
+
+  // Dialysis Sessions State Actions
+  const logSession = async (session: DialysisSession) => {
+    const updated = [session, ...sessions];
+    setSessions(updated);
+    localStorage.setItem('pdd_sessions', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_sessions').insert([session]);
+      } catch (e) {
+        console.error('Supabase logSession failed:', e);
+      }
+    }
+  };
+
+  const updateSessionStatus = async (id: string, status: DialysisSessionClaimStatus, rthReason?: string) => {
+    const updated = sessions.map(s => s.id === id ? { ...s, claimStatus: status, rthReason: rthReason || '' } : s);
+    setSessions(updated);
+    localStorage.setItem('pdd_sessions', JSON.stringify(updated));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_sessions').update({ claimStatus: status, rthReason: rthReason || '' }).eq('id', id);
+      } catch (e) {
+        console.error('Supabase updateSessionStatus failed:', e);
+      }
+    }
+  };
+
+  // Patient Registry State Actions
+  const addPatient = async (reg: PDDRegistration) => {
+    saveRegistrations([reg, ...registrations]);
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').insert([reg]);
+      } catch (e) {
+        console.error('Supabase addPatient failed:', e);
+      }
+    }
+  };
+
+  const deletePatient = async (id: string) => {
+    saveRegistrations(registrations.filter(r => r.id !== id));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase deletePatient failed:', e);
+      }
+    }
+  };
+
+  const approveRegistration = async (id: string, updatedReg: PDDRegistration) => {
+    saveRegistrations(registrations.map(r => r.id === id ? updatedReg : r));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').update(updatedReg).eq('id', id);
+      } catch (e) {
+        console.error('Supabase approveRegistration failed:', e);
+      }
+    }
+  };
+
+  const rejectRegistration = async (id: string) => {
+    saveRegistrations(registrations.filter(r => r.id !== id));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase rejectRegistration failed:', e);
+      }
+    }
+  };
+
+  const addRegistration = async (reg: PDDRegistration) => {
     saveRegistrations([reg, ...registrations]);
     setActiveView('my-records');
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').insert([reg]);
+      } catch (e) {
+        console.error('Supabase addRegistration failed:', e);
+      }
+    }
   };
 
-  const deleteRegistration = (id: string) => {
+  const deleteRegistration = async (id: string) => {
     saveRegistrations(registrations.filter((r) => r.id !== id));
+
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').delete().eq('id', id);
+      } catch (e) {
+        console.error('Supabase deleteRegistration failed:', e);
+      }
+    }
   };
 
-  const updateRegistration = (updatedReg: PDDRegistration) => {
-  saveRegistrations(
-    registrations.map((reg) =>
-      reg.id === updatedReg.id ? updatedReg : reg,
-    ),
-  );
+  const updateRegistration = async (updatedReg: PDDRegistration) => {
+    saveRegistrations(
+      registrations.map((reg) =>
+        reg.id === updatedReg.id ? updatedReg : reg,
+      ),
+    );
+    setActiveView('my-records');
 
-  setActiveView('my-records');
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('pdd_registrations').update(updatedReg).eq('id', updatedReg.id);
+      } catch (e) {
+        console.error('Supabase updateRegistration failed:', e);
+      }
+    }
   };
 
   const navItems = [
@@ -601,196 +1218,340 @@ const navigateTo = (view: PublicView) => {
     { id: 'profile', label: 'Personal Profile', icon: Users },
   ];
 
+  const renderFloatingTourButton = () => {
+    return (
+      <button
+        onClick={() => {
+          setTourActive(true);
+          setTourStep(0);
+          applyTourStep(0);
+          setIsTourPlaying(true);
+        }}
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-500 hover:to-amber-600 text-emerald-950 font-black px-6 py-3.5 rounded-full shadow-2xl border border-yellow-400/20 active:scale-95 hover:scale-105 hover:shadow-yellow-500/20 transition-all flex items-center gap-2.5 text-xs tracking-wider uppercase animate-bounce"
+      >
+        <span className="w-2.5 h-2.5 rounded-full bg-emerald-950 animate-ping"></span>
+        🎥 Presentation Tour
+      </button>
+    );
+  };
+
+  const renderTourBanner = () => {
+    const current = TOUR_STEPS[tourStep];
+    return (
+      <div className="fixed top-0 left-0 right-0 z-50 bg-emerald-950/95 backdrop-blur-md border-b-2 border-yellow-400 text-white p-4 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 font-sans">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-yellow-400 text-emerald-950 flex items-center justify-center font-black animate-pulse text-xs">
+            {tourStep + 1}
+          </div>
+          <div>
+            <h4 className="font-extrabold text-sm text-yellow-400 tracking-tight leading-none uppercase">
+              Presentation Phase: {current.title}
+            </h4>
+            <p className="text-[11px] text-slate-300 font-bold mt-1 leading-relaxed max-w-2xl">
+              {current.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => {
+              const prev = Math.max(0, tourStep - 1);
+              setTourStep(prev);
+              applyTourStep(prev);
+              setIsTourPlaying(false);
+            }}
+            disabled={tourStep === 0}
+            className="px-3.5 py-2 bg-emerald-900/50 hover:bg-emerald-900 text-white rounded-xl border border-emerald-800 disabled:opacity-40 text-xs font-black transition-all"
+          >
+            ◀ Previous
+          </button>
+
+          <button
+            onClick={() => {
+              setIsTourPlaying(!isTourPlaying);
+            }}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              isTourPlaying ? 'bg-amber-400 text-emerald-950 hover:bg-amber-500' : 'bg-emerald-700 text-white hover:bg-emerald-800'
+            }`}
+          >
+            {isTourPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
+
+          <button
+            onClick={() => {
+              const next = Math.min(TOUR_STEPS.length - 1, tourStep + 1);
+              setTourStep(next);
+              applyTourStep(next);
+              setIsTourPlaying(false);
+            }}
+            disabled={tourStep === TOUR_STEPS.length - 1}
+            className="px-3.5 py-2 bg-emerald-900/50 hover:bg-emerald-900 text-white rounded-xl border border-emerald-800 disabled:opacity-40 text-xs font-black transition-all"
+          >
+            Next ▶
+          </button>
+
+          <button
+            onClick={() => {
+              setTourActive(false);
+              setIsTourPlaying(false);
+              setRole('patient');
+              setPublicView('landing');
+              window.history.pushState(null, '', '/');
+            }}
+            className="px-3.5 py-2 bg-red-950/60 hover:bg-red-950 text-red-300 border border-red-900/50 rounded-xl text-xs font-black transition-all"
+          >
+            Exit Tour ✕
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (publicView === 'landing') {
-    return <PublicHomePage />;
+    return (
+      <>
+        {tourActive && renderTourBanner()}
+        {!tourActive && renderFloatingTourButton()}
+        <div className={tourActive ? 'pt-20' : ''}>
+          <PublicHomePage />
+        </div>
+        <PersonaSwitcher currentRole={role} onChangeRole={setRole} />
+      </>
+    );
   }
 
   if (publicView === 'login') {
     return (
-      <LoginPage
-        onLogin={() => {
-          setActiveView('home');
-          navigateTo('portal');
-        }}
-      />
+      <>
+        {tourActive && renderTourBanner()}
+        <LoginPage
+          onLogin={() => {
+            setActiveView('home');
+            navigateTo('portal');
+          }}
+        />
+      </>
     );
   }
 
   if (publicView === 'signup') {
     return (
-      <SignupPage
-        onSignup={() => {
-          setActiveView('home');
-          navigateTo('portal');
-        }}
-      />
+      <>
+        {tourActive && renderTourBanner()}
+        <SignupPage
+          onSignup={() => {
+            setActiveView('home');
+            navigateTo('portal');
+          }}
+        />
+      </>
+    );
+  }
+
+  if (role === 'admin_encoder' || role === 'doctor') {
+    return (
+      <>
+        {tourActive && renderTourBanner()}
+        <AdminPortal
+          role={role}
+          registrations={registrations}
+          sessions={sessions}
+          doctors={doctors}
+          onAddDoctor={addDoctor}
+          onUpdateDoctor={updateDoctor}
+          onDeleteDoctor={deleteDoctor}
+          onLogSession={logSession}
+          onUpdateSessionStatus={updateSessionStatus}
+          onDeletePatient={deletePatient}
+          onAddPatient={addPatient}
+          onApproveRegistration={approveRegistration}
+          onRejectRegistration={rejectRegistration}
+          onResetDemoData={resetDemoData}
+          onSeedDemoData={seedDemoData}
+          isSupabaseConnected={isSupabaseConfigured}
+          onLogout={() => {
+            setRole('patient');
+            navigateTo('landing');
+          }}
+          activeView={adminActiveView}
+          onViewChange={setAdminActiveView}
+          tourActive={tourActive}
+        />
+        <PersonaSwitcher currentRole={role} onChangeRole={setRole} />
+      </>
     );
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative">
-      {/* --- SIDEBAR --- */}
-      <motion.aside
-        initial={false}
-        animate={{
-          width: isSidebarOpen ? 280 : 0,
-          opacity: isSidebarOpen ? 1 : 0,
-        }}
-        className="bg-emerald-900 text-white flex flex-col shadow-2xl z-40 overflow-hidden whitespace-nowrap"
-      >
-        {/* Sidebar Header with Close Button */}
-        <div className="p-6 flex items-center justify-between border-b border-emerald-800/50 min-h-[80px]">
-          <div className="flex items-center gap-3">
-            <img
-              src={philhealthLogo}
-              alt="PhilHealth Logo"
-              className="w-10 h-10 rounded-lg object-contain bg-white p-1"
-            />
-            <div className="overflow-hidden">
-              <h1 className="font-bold text-lg leading-tight">PhilHealth</h1>
-              <p className="text-[10px] text-emerald-300 uppercase tracking-widest font-semibold">
-                Patient Portal
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="p-1 hover:bg-emerald-800 rounded-lg transition-colors"
-          >
-            <X size={20} className="text-emerald-400" />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-6 px-4 space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveView(item.id as View);
-              }}
-              className={`
-                w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
-                ${
-                  activeView === item.id
-                    ? 'bg-emerald-800 text-yellow-400 shadow-inner'
-                    : 'hover:bg-emerald-800/50 text-emerald-100'
-                }
-              `}
-            >
-              <item.icon
-                className={`w-5 h-5 shrink-0 ${
-                  activeView === item.id
-                    ? 'text-yellow-400'
-                    : 'text-emerald-400 group-hover:text-emerald-200'
-                }`}
+    <>
+      {tourActive && renderTourBanner()}
+      {!tourActive && renderFloatingTourButton()}
+      <div className={`flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden relative ${tourActive ? 'pt-20' : ''}`}>
+        {/* --- SIDEBAR --- */}
+        <motion.aside
+          initial={false}
+          animate={{
+            width: isSidebarOpen ? 280 : 0,
+            opacity: isSidebarOpen ? 1 : 0,
+          }}
+          className="bg-emerald-900 text-white flex flex-col shadow-2xl z-40 overflow-hidden whitespace-nowrap"
+        >
+          {/* Sidebar Header with Close Button */}
+          <div className="p-6 flex items-center justify-between border-b border-emerald-800/50 min-h-[80px]">
+            <div className="flex items-center gap-3">
+              <img
+                src={philhealthLogo}
+                alt="PhilHealth Logo"
+                className="w-10 h-10 rounded-lg object-contain bg-white p-1"
               />
-              <span className="font-medium text-sm">{item.label}</span>
-            </button>
-          ))}
-        </nav>
-
-        {/* Sidebar Bottom */}
-        <div className="p-4 border-t border-emerald-800/50">
-          <button
-            onClick={() => {
-              setIsSidebarOpen(false);
-              navigateTo('landing');
-            }}
-            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-emerald-300 hover:text-white transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-sm font-medium">Log out</span>
-          </button>
-        </div>
-      </motion.aside>
-
-      {/* --- MAIN CONTENT --- */}
-      <main className="flex-1 flex flex-col min-w-0">
-        {/* Header with the ONLY sidebar button */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-all active:scale-95"
-              aria-label="Toggle Sidebar"
-            >
-              <Menu size={24} />
-            </button>
-            <h2 className="text-xl font-bold text-slate-800 capitalize tracking-tight">
-              {activeView.replace('-', ' ')}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-full relative">
-              <Bell className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3 border-l border-slate-100 pl-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-slate-700">Juan Dela Cruz</p>
-                <p className="text-[10px] text-slate-400 uppercase font-black">
-                  Patient
+              <div className="overflow-hidden">
+                <h1 className="font-bold text-lg leading-tight">PhilHealth</h1>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-widest font-semibold">
+                  Patient Portal
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-700 font-black shadow-sm">
-                JC
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 hover:bg-emerald-800 rounded-lg transition-colors"
+            >
+              <X size={20} className="text-emerald-400" />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 py-6 px-4 space-y-2">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveView(item.id as View);
+                }}
+                className={`
+                  w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
+                  ${
+                    activeView === item.id
+                      ? 'bg-emerald-800 text-yellow-400 shadow-inner'
+                      : 'hover:bg-emerald-800/50 text-emerald-100'
+                  }
+                `}
+              >
+                <item.icon
+                  className={`w-5 h-5 shrink-0 ${
+                    activeView === item.id
+                      ? 'text-yellow-400'
+                      : 'text-emerald-400 group-hover:text-emerald-200'
+                  }`}
+                />
+                <span className="font-medium text-sm">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Sidebar Bottom */}
+          <div className="p-4 border-t border-emerald-800/50">
+            <button
+              onClick={() => {
+                setIsSidebarOpen(false);
+                navigateTo('landing');
+              }}
+              className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-emerald-300 hover:text-white transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium">Log out</span>
+            </button>
+          </div>
+        </motion.aside>
+
+        {/* --- MAIN CONTENT --- */}
+        <main className="flex-1 flex flex-col min-w-0">
+          {/* Header with the ONLY sidebar button */}
+          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-30">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-all active:scale-95"
+                aria-label="Toggle Sidebar"
+              >
+                <Menu size={24} />
+              </button>
+              <h2 className="text-xl font-bold text-slate-800 capitalize tracking-tight">
+                {activeView.replace('-', ' ')}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-full relative">
+                <Bell className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-3 border-l border-slate-100 pl-4">
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-bold text-slate-700">Juan Dela Cruz</p>
+                  <p className="text-[10px] text-slate-400 uppercase font-black">
+                    Patient
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-700 font-black shadow-sm">
+                  JC
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* View Content */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeView}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="max-w-6xl mx-auto"
-            >
-              {activeView === 'home' && <Dashboard registrations={registrations} />}
+          {/* View Content */}
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/30">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="max-w-6xl mx-auto"
+              >
+                {activeView === 'home' && <Dashboard registrations={registrations} />}
 
-              {activeView === 'apply' && (
-                <RegistrationForm onSubmit={addRegistration} />
-              )}
+                {activeView === 'apply' && (
+                  <RegistrationForm onSubmit={addRegistration} />
+                )}
 
-              {activeView === 'my-records' && (
-                <RecordsList
-                  registrations={registrations}
-                  onDelete={deleteRegistration}
-                  onUpdate={updateRegistration}
-                />
-              )}
+                {activeView === 'my-records' && (
+                  <RecordsList
+                    registrations={registrations}
+                    onDelete={deleteRegistration}
+                    onUpdate={updateRegistration}
+                  />
+                )}
 
-              {activeView === 'profile' && (
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
-                  <h3 className="text-2xl font-bold mb-4 text-slate-800">
-                    Personal Profile
-                  </h3>
-                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-slate-600">
-                      Account settings and security management.
-                    </p>
+                {activeView === 'profile' && (
+                  <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                    <h3 className="text-2xl font-bold mb-4 text-slate-800">
+                      Personal Profile
+                    </h3>
+                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                      <p className="text-slate-600">
+                        Account settings and security management.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </main>
 
-      {/* Optional: Dark overlay when sidebar is open on smaller screens */}
-      {isSidebarOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 lg:hidden"
-        />
-      )}
-    </div>
+        {/* Optional: Dark overlay when sidebar is open on smaller screens */}
+        {isSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setIsSidebarOpen(false)}
+            className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-30 lg:hidden"
+          />
+        )}
+      </div>
+      <PersonaSwitcher currentRole={role} onChangeRole={setRole} />
+    </>
   );
 }
