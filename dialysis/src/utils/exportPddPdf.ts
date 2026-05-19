@@ -183,11 +183,11 @@ export const DEFAULT_PDD_FIELD_MAP = {
     "y": 242
   },
   "hdOthers": {
-    "x": 333,
+    "x": 278,
     "y": 242
   },
   "hdOthersText": {
-    "x": 365,
+    "x": 380,
     "y": 244
   },
   "pdCapd": {
