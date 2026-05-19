@@ -53,6 +53,7 @@ return canvas.toDataURL('image/png');
 
 export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
   const [step, setStep] = useState(1);
+  const [showConfirm, setShowConfirm] = useState(false);
   const totalSteps = 4;
 
   const [formData, setFormData] = useState<Partial<PDDRegistration>>({
@@ -86,7 +87,13 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
   const handleNext = () => setStep(s => Math.min(s + 1, totalSteps));
   const handleBack = () => setStep(s => Math.max(s - 1, 1));
 
+  const handleCommitClick = () => {
+    setShowConfirm(true);
+  };
+
   const handleSubmit = () => {
+    setShowConfirm(false);
+
     const finalData: PDDRegistration = {
       ...formData,
       id: Math.random().toString(36).substr(2, 9),
@@ -96,6 +103,15 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
     
     onSubmit(finalData);
   };
+
+  const cardPanelClass = 'p-6 bg-slate-50/60 border border-slate-100 rounded-3xl space-y-6';
+  const cardHeaderClass = 'flex items-center gap-3 border-b border-slate-200/50 pb-3';
+  const cardTitleClass = 'text-xs font-bold text-slate-500 uppercase tracking-wider';
+  const fieldLabelClass = 'text-[11px] font-bold text-slate-400 uppercase tracking-widest block ml-0.5 mb-1.5';
+  const inputControlClass = 'w-full h-12 px-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 text-slate-700 font-medium transition-all placeholder:text-slate-300';
+  const selectControlClass = 'w-full h-12 px-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-slate-700 font-medium transition-all appearance-none cursor-pointer';
+  const segmentedWrapperClass = 'flex gap-1.5 h-12 bg-white p-1 border border-slate-200 rounded-xl';
+  const segmentedButtonClass = (active: boolean) => `flex-1 rounded-lg text-xs font-bold transition-all ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 bg-transparent'}`;
 
   const StepIndicator = () => (
     <div className="flex items-center justify-between mb-12 relative">
@@ -312,41 +328,82 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
 
             {/* Step 3: Medical Info */}
             {step === 3 && (
-              <div className="space-y-8">
-                <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   {/* Z Benefits Checkboxes */}
-                  <div className="p-6 bg-white border-2 border-slate-100 rounded-3xl space-y-4">
-                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-50 pb-2">Z Benefit Enrollment</h4>
-                    <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group">
-                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.zBenefits?.pdFirstPolicy ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200 group-hover:border-emerald-400'}`}>
-                        {formData.zBenefits?.pdFirstPolicy && <CheckCircle2 className="w-4 h-4 text-white" />}
-                      </div>
-                      <input type="checkbox" className="hidden" checked={formData.zBenefits?.pdFirstPolicy} onChange={(e) => updateNested('zBenefits', 'pdFirstPolicy', e.target.checked)} />
-                      <span className="text-sm font-semibold text-slate-700">PD First Policy</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors group border-t border-slate-50 pt-4">
-                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.zBenefits?.kidneyTransplant ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-slate-200 group-hover:border-emerald-400'}`}>
-                        {formData.zBenefits?.kidneyTransplant && <CheckCircle2 className="w-4 h-4 text-white" />}
-                      </div>
-                      <input type="checkbox" className="hidden" checked={formData.zBenefits?.kidneyTransplant} onChange={(e) => updateNested('zBenefits', 'kidneyTransplant', e.target.checked)} />
-                      <span className="text-sm font-semibold text-slate-700">Kidney Transplantation</span>
-                    </label>
+                  <div className={`${cardPanelClass} md:col-span-6`}>
+                    <div className={cardHeaderClass}>
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <h4 className={cardTitleClass}>Z Benefit Enrollment</h4>
+                    </div>
+                    <div className="space-y-2 pt-1">
+                      <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:bg-emerald-50/20 cursor-pointer transition-colors group">
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData.zBenefits?.pdFirstPolicy ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200'}`}>
+                          {formData.zBenefits?.pdFirstPolicy && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={formData.zBenefits?.pdFirstPolicy} onChange={(e) => updateNested('zBenefits', 'pdFirstPolicy', e.target.checked)} />
+                        <span className="text-xs font-bold text-slate-600">PD First Policy</span>
+                      </label>
+                      
+                      <label className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl hover:bg-emerald-50/20 cursor-pointer transition-colors group">
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${formData.zBenefits?.kidneyTransplant ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-200'}`}>
+                          {formData.zBenefits?.kidneyTransplant && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+                        <input type="checkbox" className="hidden" checked={formData.zBenefits?.kidneyTransplant} onChange={(e) => updateNested('zBenefits', 'kidneyTransplant', e.target.checked)} />
+                        <span className="text-xs font-bold text-slate-600">Kidney Transplantation</span>
+                      </label>
+                    </div>
                   </div>
 
-                  <div className="p-6 bg-slate-50 rounded-3xl space-y-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dialysis Start Date</label>
+                  {/* Previous Availment Segment */}
+                  <div className={`${cardPanelClass} md:col-span-6`}>
+                    <div className={cardHeaderClass}>
+                      <Activity className="w-4 h-4 text-emerald-600" />
+                      <h4 className={cardTitleClass}>Previous Availment (Case Rates)</h4>
+                    </div>
+                    <div className="pt-1">
+                      <p className="text-[11px] font-bold text-slate-500 mb-2 ml-0.5">• Kidney Transplantation</p>
+                      <div className={segmentedWrapperClass}>
+                        <button
+                          type="button"
+                          onClick={() => updateNested('previousAvailment', 'kidneyTransplant', true)}
+                          className={segmentedButtonClass(formData.previousAvailment?.kidneyTransplant === true)}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateNested('previousAvailment', 'kidneyTransplant', false)}
+                          className={segmentedButtonClass(formData.previousAvailment?.kidneyTransplant === false)}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dialysis Configurations */}
+                <div className={cardPanelClass}>
+                  <div className={cardHeaderClass}>
+                    <Stethoscope className="w-4 h-4 text-emerald-600" />
+                    <h4 className={cardTitleClass}>Dialysis Configurations</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-6">
+                      <label className={fieldLabelClass}>I started dialysis on (month & year)</label>
                       <input 
                         type="month" 
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500"
+                        className={inputControlClass}
                         value={formData.dialysisStartDate ?? ''}
                         onChange={(e) => setFormData({ ...formData, dialysisStartDate: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">For HD: Type of Dialyzer</label>
+
+                    <div className="md:col-span-6 relative">
+                      <label className={fieldLabelClass}>For HD: Type of Dialyzer</label>
                       <select 
-                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 appearance-none font-semibold text-slate-700"
+                        className={selectControlClass}
                         value={formData.hdDetails?.type}
                         onChange={(e) => updateNested('hdDetails', 'type', e.target.value)}
                       >
@@ -354,39 +411,47 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                         <option value="High flux">High Flux</option>
                         <option value="Others">Others</option>
                       </select>
+                      <div className="pointer-events-none absolute bottom-4 right-4 text-slate-400 text-[10px]">▼</div>
                     </div>
-                    {formData.hdDetails?.type === 'Others' && (
-                      <div className="space-y-1 col-span-2">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Other Dialyzer Type (please specify)</label>
-                        <input
-                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500"
-                          placeholder="Specify other dialyzer type..."
-                          value={formData.hdDetails?.othersDetail ?? ''}
-                          onChange={(e) => updateNested('hdDetails', 'othersDetail', e.target.value)}
-                        />
-                      </div>
-                    )}
                   </div>
+
+                  {formData.hdDetails?.type === 'Others' && (
+                    <div className="pt-1">
+                      <label className={fieldLabelClass}>Other Dialyzer Type (Please Specify)</label>
+                      <input
+                        className={inputControlClass}
+                        placeholder="Specify custom technical model description..."
+                        value={formData.hdDetails?.othersDetail ?? ''}
+                        onChange={(e) => updateNested('hdDetails', 'othersDetail', e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-6 bg-white border-2 border-emerald-100 rounded-3xl">
-                   <h4 className="text-sm font-bold text-emerald-600 uppercase tracking-wider mb-6">Current PD System Selection</h4>
-                   <div className="grid grid-cols-5 gap-3">
-                     {['CAPD', 'CIPD-C', 'CIPD-M', 'CCPD', 'NIPD'].map((sys) => (
-                       <button
-                         key={sys}
-                         onClick={() => updateNested('pdDetails', 'system', sys)}
-                         className={`py-6 px-2 rounded-2xl text-xs font-bold border-2 transition-all flex flex-col items-center justify-center gap-2
-                           ${formData.pdDetails?.system === sys ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg scale-105' : 'bg-white border-slate-50 text-slate-400 hover:border-emerald-200'}
-                         `}
-                       >
-                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${formData.pdDetails?.system === sys ? 'bg-white/20' : 'bg-slate-50'}`}>
-                           {formData.pdDetails?.system === sys ? <div className="w-2 h-2 bg-white rounded-full animate-pulse" /> : <Activity className="w-4 h-4 opacity-30" />}
-                         </div>
-                         {sys}
-                       </button>
-                     ))}
-                   </div>
+                {/* Peritoneal Dialysis System */}
+                <div className={cardPanelClass}>
+                  <div className={cardHeaderClass}>
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                    <h4 className={cardTitleClass}>15. For PD: Current PD System Selection</h4>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {['CAPD', 'CIPD-C', 'CIPD-M', 'CCPD', 'NIPD'].map((sys) => {
+                      const isSelected = formData.pdDetails?.system === sys;
+                      return (
+                        <button
+                          key={sys}
+                          type="button"
+                          onClick={() => updateNested('pdDetails', 'system', sys)}
+                          className={`h-20 rounded-2xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-2
+                            ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-100 scale-[1.02]' : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-slate-600'}
+                          `}
+                        >
+                          <Activity className={`w-4 h-4 ${isSelected ? 'text-white opacity-100' : 'text-slate-300'}`} />
+                          {sys}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -535,6 +600,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
 
         <div className="flex justify-between mt-12 pt-8 border-t border-slate-100">
           <button
+            type="button"
             onClick={handleBack}
             disabled={step === 1}
             className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all
@@ -547,6 +613,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
 
           {step < totalSteps ? (
             <button
+              type="button"
               onClick={handleNext}
               className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all outline-none"
             >
@@ -555,14 +622,67 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
             </button>
           ) : (
             <button
-              onClick={handleSubmit}
+              type="button"
+              onClick={handleCommitClick}
               className="flex items-center gap-2 px-10 py-4 bg-emerald-900 text-yellow-400 rounded-2xl font-bold shadow-xl hover:bg-black hover:-translate-y-1 transition-all outline-none"
             >
-              Submit Registration
+              Complete Submission
               <CheckCircle2 className="w-5 h-5" />
             </button>
           )}
         </div>
+
+        <AnimatePresence>
+          {showConfirm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowConfirm(false)}
+                className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: 'spring', duration: 0.4 }}
+                className="relative z-10 w-full max-w-sm space-y-4 rounded-3xl border border-slate-100 bg-white p-6 text-center shadow-xl"
+              >
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 shadow-inner">
+                  <Info className="h-6 w-6" />
+                </div>
+
+                <div>
+                  <h3 className="text-base font-bold tracking-tight text-slate-800">
+                    Confirm Submission
+                  </h3>
+                  <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
+                    Are you sure you want to submit this registration form? Please review the details before completing the application.
+                  </p>
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(false)}
+                    className="h-11 flex-1 rounded-xl border border-slate-200/60 bg-slate-50 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="h-11 flex-1 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-md shadow-emerald-100 transition-colors hover:bg-emerald-700"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

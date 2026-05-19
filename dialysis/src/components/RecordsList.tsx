@@ -7,6 +7,7 @@ import {
   FileText,
   // Settings, // PDF Layout Editor icon - keep for future debugging
   Pencil,
+  AlertTriangle,
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -34,6 +35,8 @@ export default function RecordsList({
   // const [layoutEditorReg, setLayoutEditorReg] =
   //   useState<PDDRegistration | null>(null);
   const [editingReg, setEditingReg] = useState<PDDRegistration | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
 
   const filteredRegistrations = registrations.filter((reg) => {
     const normalizedSearch = searchTerm.toLowerCase();
@@ -41,7 +44,7 @@ export default function RecordsList({
     const matchesSearch =
       reg.patientName.first.toLowerCase().includes(normalizedSearch) ||
       reg.patientName.last.toLowerCase().includes(normalizedSearch) ||
-      reg.pin.includes(searchTerm);
+      (reg.pin && reg.pin.includes(searchTerm));
 
     const matchesStatus =
       statusFilter === 'All' || reg.recordStatus === statusFilter;
@@ -58,6 +61,20 @@ export default function RecordsList({
     }
 
     downloadPddRegistrationPdf(latestRegistration);
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setRecordToDelete(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleFinalDelete = () => {
+    if (recordToDelete) {
+      onDelete(recordToDelete);
+    }
+
+    setShowDeleteConfirm(false);
+    setRecordToDelete(null);
   };
 
   // PDF LAYOUT EDITOR HANDLER - hidden for production, keep for future debugging
@@ -82,7 +99,7 @@ export default function RecordsList({
               placeholder="Filter my applications..."
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all outline-none"
             />
           </div>
 
@@ -203,7 +220,7 @@ export default function RecordsList({
                               {reg.regType}
                             </p>
                             <p className="text-xs text-slate-400 mt-1 capitalize">
-                              {reg.hdDetails.type} Dialyzer
+                              {reg.hdDetails?.type || 'Standard'} Dialyzer
                             </p>
                           </div>
                         </div>
@@ -211,7 +228,7 @@ export default function RecordsList({
 
                       <td className="px-6 py-4">
                         <span className="font-mono text-sm text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200">
-                          {reg.pin}
+                          {reg.pin || '—'}
                         </span>
                       </td>
 
@@ -280,15 +297,7 @@ export default function RecordsList({
                           */}
 
                           <button
-                            onClick={() => {
-                              const confirmed = confirm(
-                                'Are you sure you want to delete this record?',
-                              );
-
-                              if (confirmed) {
-                                onDelete(reg.id);
-                              }
-                            }}
+                            onClick={() => handleDeleteClick(reg.id)}
                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete Record"
                           >
@@ -342,6 +351,65 @@ export default function RecordsList({
           onSave={onUpdate}
         />
       )}
+
+
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setRecordToDelete(null);
+              }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', duration: 0.35 }}
+              className="relative z-10 w-full max-w-sm space-y-4 rounded-3xl border border-slate-100 bg-white p-6 text-center shadow-xl"
+            >
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 shadow-inner">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+
+              <div>
+                <h3 className="text-base font-bold tracking-tight text-slate-800">
+                  Delete Registration Record
+                </h3>
+                <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
+                  Are you sure you want to permanently remove this dialysis application record? This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setRecordToDelete(null);
+                  }}
+                  className="h-11 flex-1 rounded-xl border border-slate-200/60 bg-slate-50 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFinalDelete}
+                  className="h-11 flex-1 rounded-xl bg-rose-600 text-xs font-bold text-white shadow-md shadow-rose-100 transition-colors hover:bg-rose-700"
+                >
+                  Confirm Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
