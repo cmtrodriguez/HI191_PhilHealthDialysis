@@ -45,7 +45,16 @@ export default function PersonaSwitcher({ currentRole, onChangeRole }: PersonaSw
   const currentPersona = personas.find((p) => p.id === currentRole) || personas[0];
 
   return (
-    <div className="fixed bottom-6 left-6 z-50 font-sans">
+    /* Changed to motion.div and added drag properties */
+      <motion.div 
+        drag="x" // Restricts movement to the horizontal axis only
+        dragMomentum={false}
+        dragConstraints={{ 
+          left: 0, 
+          right: window.innerWidth - 240 // Prevents the button from sliding off the right side
+        }}
+        className="fixed bottom-6 left-6 z-50 font-sans cursor-grab active:cursor-grabbing"
+      >
       <div className="relative">
         <AnimatePresence>
           {isOpen && (
@@ -152,6 +161,6 @@ export default function PersonaSwitcher({ currentRole, onChangeRole }: PersonaSw
           />
         </motion.button>
       </div>
-    </div>
+    </motion.div>
   );
 }

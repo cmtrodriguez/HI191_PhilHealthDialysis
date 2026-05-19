@@ -604,6 +604,53 @@ function cleanBoxValue(value: unknown): string {
   return safeText(value).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 }
 
+function makeGeneratedSignatureDataUrl(name: string) {
+  const trimmedName = name.trim();
+
+  if (!trimmedName || typeof document === 'undefined') {
+    return '';
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 900;
+  canvas.height = 240;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    return '';
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000000';
+  context.textAlign = 'left';
+  context.textBaseline = 'middle';
+
+  let fontSize = 104;
+
+  do {
+    context.font = `${fontSize}px "Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive`;
+    fontSize -= 4;
+  } while (
+    context.measureText(trimmedName).width > canvas.width - 80 &&
+    fontSize > 52
+  );
+
+  context.fillText(trimmedName, 30, canvas.height / 2 + 10);
+
+  return canvas.toDataURL('image/png');
+}
+
+async function embedSignatureImage(pdfDoc: PDFDocument, source: string) {
+  const imageBytes = await fetch(source).then((res) => res.arrayBuffer());
+
+  try {
+    return await pdfDoc.embedPng(imageBytes);
+  } catch {
+    return await pdfDoc.embedJpg(imageBytes);
+  }
+}
+
 export async function buildPddRegistrationPdfBytes(
   reg: ExportablePDDRegistration,
   options: PddPdfOptions = {},
@@ -989,17 +1036,18 @@ export async function buildPddRegistrationPdfBytes(
   check(reg.pdDetails?.system === 'NIPD', fields.pdNipd.x, fields.pdNipd.y);
 
 const typedSignatureName = safeText(reg.signatureName);
-const fallbackSignatureName = `${safeText(reg.patientName?.first)} ${safeText(reg.patientName?.last)}`.trim();
+const fallbackSignatureName = `${safeText(reg.patientName?.first)} ${safeText(
+  reg.patientName?.last,
+)}`.trim();
 
-if (reg.signaturePreview) {
+const signatureText = typedSignatureName || fallbackSignatureName;
+
+const signatureSource =
+  safeText(reg.signaturePreview) || makeGeneratedSignatureDataUrl(signatureText);
+
+if (signatureSource) {
   try {
-    const imageBytes = await fetch(reg.signaturePreview).then((res) =>
-      res.arrayBuffer(),
-    );
-
-    const image = reg.signaturePreview.includes('image/png')
-      ? await pdfDoc.embedPng(imageBytes)
-      : await pdfDoc.embedJpg(imageBytes);
+    const image = await embedSignatureImage(pdfDoc, signatureSource);
 
     const imagePoint = transform(
       fields.signatureImage.x,
@@ -1020,14 +1068,14 @@ if (reg.signaturePreview) {
     });
   } catch {
     drawSignature(
-      typedSignatureName || fallbackSignatureName,
+      signatureText,
       fields.signatureName.x,
       fields.signatureName.y,
     );
   }
 } else {
   drawSignature(
-    typedSignatureName || fallbackSignatureName,
+    signatureText,
     fields.signatureName.x,
     fields.signatureName.y,
   );
