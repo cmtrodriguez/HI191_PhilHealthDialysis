@@ -1048,6 +1048,15 @@ export default function App() {
     localStorage.setItem('pdd_registrations', JSON.stringify(newRegs));
   };
 
+  const handleLogout = () => {
+    setRole('patient');
+    setActiveView('home');
+    setAdminActiveView('dashboard');
+    setIsSidebarOpen(false);
+    setTourActive(false);
+    navigateTo('landing');
+  };
+
   // Attending Doctors State Actions
   const addDoctor = async (doc: Nephrologist) => {
     const updated = [doc, ...doctors];
@@ -1370,10 +1379,7 @@ export default function App() {
           onResetDemoData={resetDemoData}
           onSeedDemoData={seedDemoData}
           isSupabaseConnected={isSupabaseConfigured}
-          onLogout={() => {
-            setRole('patient');
-            navigateTo('landing');
-          }}
+          onLogout={handleLogout}
           activeView={adminActiveView}
           onViewChange={setAdminActiveView}
           tourActive={tourActive}
@@ -1406,10 +1412,10 @@ export default function App() {
                 className="w-10 h-10 rounded-lg object-contain bg-white p-1"
               />
               <div className="overflow-hidden">
-                <h1 className="font-bold text-lg leading-tight">PhilHealth</h1>
                 <p className="text-[10px] text-emerald-300 uppercase tracking-widest font-semibold">
-                  Patient Portal
+                  Patient Workspace
                 </p>
+                <h1 className="font-bold text-lg leading-tight">PhilHealth Portal</h1>
               </div>
             </div>
             <button
@@ -1429,11 +1435,11 @@ export default function App() {
                   setActiveView(item.id as View);
                 }}
                 className={`
-                  w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 group
+                  w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 group
                   ${
                     activeView === item.id
                       ? 'bg-emerald-800 text-yellow-400 shadow-inner'
-                      : 'hover:bg-emerald-800/50 text-emerald-100'
+                      : 'text-emerald-100 hover:bg-emerald-800/50 hover:text-white'
                   }
                 `}
               >
@@ -1444,24 +1450,11 @@ export default function App() {
                       : 'text-emerald-400 group-hover:text-emerald-200'
                   }`}
                 />
-                <span className="font-medium text-sm">{item.label}</span>
+                <span className="font-semibold text-sm">{item.label}</span>
               </button>
             ))}
           </nav>
-
-          {/* Sidebar Bottom */}
-          <div className="p-4 border-t border-emerald-800/50">
-            <button
-              onClick={() => {
-                setIsSidebarOpen(false);
-                navigateTo('landing');
-              }}
-              className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-emerald-300 hover:text-white transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium">Log out</span>
-            </button>
-          </div>
+          
         </motion.aside>
 
         {/* --- MAIN CONTENT --- */}
@@ -1495,6 +1488,13 @@ export default function App() {
                 <div className="w-10 h-10 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center text-emerald-700 font-black shadow-sm">
                   JC
                 </div>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 hover:bg-red-50 hover:text-red-600 transition-all active:scale-95"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
               </div>
             </div>
           </header>

@@ -6,6 +6,7 @@ type ExportablePDDRegistration = PDDRegistration & {
   signaturePreview?: string;
   signatureFileName?: string;
   signatureDate?: string;
+  signatureName?: string;
 };
 
 export type PdfFieldBox = {
@@ -182,11 +183,11 @@ export const DEFAULT_PDD_FIELD_MAP = {
     "y": 242
   },
   "hdOthers": {
-    "x": 333,
+    "x": 278,
     "y": 242
   },
   "hdOthersText": {
-    "x": 365,
+    "x": 380,
     "y": 244
   },
   "pdCapd": {
@@ -202,16 +203,16 @@ export const DEFAULT_PDD_FIELD_MAP = {
     "y": 216
   },
   "pdCcpd": {
-    "x": 334,
-    "y": 216
+    "x": 314,
+    "y": 217
   },
   "pdNipd": {
-    "x": 380,
+    "x": 360,
     "y": 216
   },
   "signatureImage": {
     "x": 142,
-    "y": 168,
+    "y": 160,
     "width": 120,
     "height": 24
   },
@@ -603,6 +604,53 @@ function cleanBoxValue(value: unknown): string {
   return safeText(value).replace(/[^A-Za-z0-9]/g, '').toUpperCase();
 }
 
+function makeGeneratedSignatureDataUrl(name: string) {
+  const trimmedName = name.trim();
+
+  if (!trimmedName || typeof document === 'undefined') {
+    return '';
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 900;
+  canvas.height = 240;
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    return '';
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = '#000000';
+  context.textAlign = 'left';
+  context.textBaseline = 'middle';
+
+  let fontSize = 104;
+
+  do {
+    context.font = `${fontSize}px "Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive`;
+    fontSize -= 4;
+  } while (
+    context.measureText(trimmedName).width > canvas.width - 80 &&
+    fontSize > 52
+  );
+
+  context.fillText(trimmedName, 30, canvas.height / 2 + 10);
+
+  return canvas.toDataURL('image/png');
+}
+
+async function embedSignatureImage(pdfDoc: PDFDocument, source: string) {
+  const imageBytes = await fetch(source).then((res) => res.arrayBuffer());
+
+  try {
+    return await pdfDoc.embedPng(imageBytes);
+  } catch {
+    return await pdfDoc.embedJpg(imageBytes);
+  }
+}
+
 export async function buildPddRegistrationPdfBytes(
   reg: ExportablePDDRegistration,
   options: PddPdfOptions = {},
@@ -628,6 +676,7 @@ export async function buildPddRegistrationPdfBytes(
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const signatureFont = await pdfDoc.embedFont(StandardFonts.TimesRomanItalic);
 
   const textColor = rgb(0, 0, 0);
   const debugRed = rgb(1, 0, 0);
@@ -666,6 +715,22 @@ export async function buildPddRegistrationPdfBytes(
   const drawSmall = (value: unknown, x: number, y: number) => {
     draw(value, x, y, FONT_SIZE.small);
   };
+
+  const drawSignature = (value: unknown, x: number, y: number) => {
+  const text = safeText(value);
+  if (!text) return;
+
+  const point = transform(x, y);
+
+  page.drawText(text, {
+    x: point.x,
+    y: point.y,
+    size: scaledSize(13),
+    font: signatureFont,
+    color: textColor,
+    maxWidth: 160,
+  });
+};
 
   const drawBoxedText = (
     value: unknown,
@@ -970,45 +1035,51 @@ export async function buildPddRegistrationPdfBytes(
   check(reg.pdDetails?.system === 'CCPD', fields.pdCcpd.x, fields.pdCcpd.y);
   check(reg.pdDetails?.system === 'NIPD', fields.pdNipd.x, fields.pdNipd.y);
 
-  if (reg.signaturePreview) {
-    try {
-      const imageBytes = await fetch(reg.signaturePreview).then((res) =>
-        res.arrayBuffer(),
-      );
+const typedSignatureName = safeText(reg.signatureName);
+const fallbackSignatureName = `${safeText(reg.patientName?.first)} ${safeText(
+  reg.patientName?.last,
+)}`.trim();
 
-      const image = reg.signaturePreview.includes('image/png')
-        ? await pdfDoc.embedPng(imageBytes)
-        : await pdfDoc.embedJpg(imageBytes);
+const signatureText = typedSignatureName || fallbackSignatureName;
 
-      const imagePoint = transform(fields.signatureImage.x, fields.signatureImage.y);
+const signatureSource =
+  safeText(reg.signaturePreview) || makeGeneratedSignatureDataUrl(signatureText);
 
-      page.drawImage(image, {
-        x: imagePoint.x,
-        y: imagePoint.y,
-        width:
-          (fields.signatureImage.width ?? 120) *
-          autoScaleX *
-          calibration.scaleX,
-        height:
-          (fields.signatureImage.height ?? 24) *
-          autoScaleY *
-          calibration.scaleY,
-      });
-    } catch {
-      draw(
-        `${upper(reg.patientName?.first)} ${upper(reg.patientName?.last)}`,
-        fields.signatureName.x,
-        fields.signatureName.y,
-      );
-    }
-  } else {
-    draw(
-      `${upper(reg.patientName?.first)} ${upper(reg.patientName?.last)}`,
+if (signatureSource) {
+  try {
+    const image = await embedSignatureImage(pdfDoc, signatureSource);
+
+    const imagePoint = transform(
+      fields.signatureImage.x,
+      fields.signatureImage.y,
+    );
+
+    page.drawImage(image, {
+      x: imagePoint.x,
+      y: imagePoint.y,
+      width:
+        (fields.signatureImage.width ?? 120) *
+        autoScaleX *
+        calibration.scaleX,
+      height:
+        (fields.signatureImage.height ?? 24) *
+        autoScaleY *
+        calibration.scaleY,
+    });
+  } catch {
+    drawSignature(
+      signatureText,
       fields.signatureName.x,
       fields.signatureName.y,
     );
   }
-
+} else {
+  drawSignature(
+    signatureText,
+    fields.signatureName.x,
+    fields.signatureName.y,
+  );
+}
   drawBoxedText(signatureDate.month, boxes.signatureDateMonth);
   drawBoxedText(signatureDate.day, boxes.signatureDateDay);
   drawBoxedText(signatureDate.year, boxes.signatureDateYear);
