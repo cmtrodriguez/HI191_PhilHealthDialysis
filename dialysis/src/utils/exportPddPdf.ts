@@ -203,11 +203,11 @@ export const DEFAULT_PDD_FIELD_MAP = {
     "y": 216
   },
   "pdCcpd": {
-    "x": 334,
-    "y": 216
+    "x": 314,
+    "y": 217
   },
   "pdNipd": {
-    "x": 380,
+    "x": 360,
     "y": 216
   },
   "signatureImage": {
