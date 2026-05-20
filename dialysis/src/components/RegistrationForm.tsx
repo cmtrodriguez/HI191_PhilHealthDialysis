@@ -73,6 +73,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
   pdDetails: { system: '' },
   admin: { pddRegNo: 'AUTO-GEN', registeredBy: '', accreditationNo: '', registrationDate: '' },
   });
+  const [stepError, setStepError] = useState<string[]>([]);
 
   const updateNested = (category: string, field: string, value: any) => {
     setFormData(prev => ({
@@ -84,14 +85,96 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
     }));
   };
 
-  const handleNext = () => setStep(s => Math.min(s + 1, totalSteps));
-  const handleBack = () => setStep(s => Math.max(s - 1, 1));
+  const validateStep = (stepNumber: number) => {
+    const errors: string[] = [];
+
+    if (stepNumber === 1) {
+      if (!formData.pin?.trim()) errors.push('PIN is required.');
+      if (!formData.patientName?.last?.trim()) errors.push('Patient last name is required.');
+      if (!formData.patientName?.first?.trim()) errors.push('Patient first name is required.');
+      if (!formData.memberType?.trim()) errors.push('Current membership type is required.');
+      if (!formData.dob) errors.push('Date of birth is required.');
+      if (!formData.sex?.trim()) errors.push('Sex selection is required.');
+      if (!formData.civilStatus?.trim()) errors.push('Civil status is required.');
+    }
+
+    if (stepNumber === 2) {
+      if (!formData.address?.street?.trim()) errors.push('Building or street address is required.');
+      if (!formData.address?.barangay?.trim()) errors.push('Barangay is required.');
+      if (!formData.address?.city?.trim()) errors.push('City or municipality is required.');
+      if (!formData.address?.province?.trim()) errors.push('Province is required.');
+      if (!formData.contact?.mobile?.trim()) errors.push('Mobile number is required.');
+      if (!formData.contact?.email?.trim()) errors.push('Email address is required.');
+    }
+
+    if (stepNumber === 3) {
+      if (!formData.dialysisStartDate) errors.push('Dialysis start date is required.');
+      if (!formData.hdDetails?.type?.trim()) errors.push('HD dialyzer type is required.');
+      if (formData.hdDetails?.type === 'Others' && !formData.hdDetails?.othersDetail?.trim()) errors.push('Please specify the other dialyzer type.');
+    }
+
+    if (stepNumber === 4) {
+      // Identity / Registration fields (also shown in review)
+      if (!formData.pin?.trim()) errors.push('PIN is required.');
+      if (!formData.patientName?.last?.trim()) errors.push('Patient last name is required.');
+      if (!formData.patientName?.first?.trim()) errors.push('Patient first name is required.');
+      if (!formData.sex?.trim()) errors.push('Sex selection is required.');
+      if (!formData.dob) errors.push('Date of birth is required.');
+      if (!formData.regType?.trim()) errors.push('Registration type is required.');
+
+      // Dialysis configuration shown in review
+      if (!formData.dialysisStartDate) errors.push('Dialysis start date is required.');
+      const hasDialysisType = (formData.pdDetails?.system && formData.pdDetails.system.trim()) || (formData.hdDetails?.type && formData.hdDetails.type.trim());
+      if (!hasDialysisType) errors.push('Dialysis system/type selection is required.');
+
+      // Certification & admin fields
+      if (!(formData as any).signatureName?.trim()) errors.push('Signature name is required for submission.');
+      if (!(formData as any).signatureDate) errors.push('Signature date is required for submission.');
+      // PDD Registration No. is intentionally NOT required (auto-generated on approval)
+      if (!formData.admin?.registeredBy?.trim()) errors.push('Registered By (Health Care Institution) is required.');
+      if (!formData.admin?.accreditationNo?.trim()) errors.push('Accreditation No. is required.');
+      if (!formData.admin?.registrationDate) errors.push('Registration Date is required.');
+    }
+
+    return errors;
+  };
+
+  const handleNext = () => {
+    const errors = validateStep(step);
+    if (errors.length > 0) {
+      setStepError(errors);
+      return;
+    }
+
+    setStepError([]);
+    setStep(s => Math.min(s + 1, totalSteps));
+  };
+
+  const handleBack = () => {
+    setStepError([]);
+    setStep(s => Math.max(s - 1, 1));
+  };
 
   const handleCommitClick = () => {
+    const errors = validateStep(step);
+    if (errors.length > 0) {
+      setStepError(errors);
+      setShowConfirm(true);
+      return;
+    }
+
+    setStepError([]);
     setShowConfirm(true);
   };
 
   const handleSubmit = () => {
+    const errors = validateStep(step);
+    if (errors.length > 0) {
+      setShowConfirm(false);
+      setStepError(errors);
+      return;
+    }
+
     setShowConfirm(false);
 
     const finalData: PDDRegistration = {
@@ -112,6 +195,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
   const selectControlClass = 'w-full h-12 px-4 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500 text-slate-700 font-medium transition-all appearance-none cursor-pointer';
   const segmentedWrapperClass = 'flex gap-1.5 h-12 bg-white p-1 border border-slate-200 rounded-xl';
   const segmentedButtonClass = (active: boolean) => `flex-1 rounded-lg text-xs font-bold transition-all ${active ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 bg-transparent'}`;
+  const requiredMark = <span className="text-red-500">*</span>;
 
   const StepIndicator = () => (
     <div className="flex items-center justify-between mb-12 relative">
@@ -156,6 +240,16 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
             transition={{ duration: 0.3 }}
             className="min-h-[400px]"
           >
+            {stepError.length > 0 && (
+              <div className="mb-6 rounded-3xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <p className="font-semibold">Please fix the following required field(s):</p>
+                <ul className="mt-2 list-disc list-inside space-y-1 text-xs text-rose-700/90">
+                  {stepError.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {/* Step 1: Identity Info */}
             {step === 1 && (
               <div className="space-y-8">
@@ -177,12 +271,13 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">PIN Number</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">PIN Number {requiredMark}</label>
                     <input 
                       type="text" 
                       placeholder="00-000000000-0"
                       value={formData.pin ?? ''}
                       onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+                      required
                       className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-emerald-500 outline-none transition-all font-mono tracking-widest"
                     />
                   </div>
@@ -191,59 +286,75 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                 <div className="space-y-4">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Full Patient Name</label>
                   <div className="grid grid-cols-4 gap-4">
-                    <input 
-                      placeholder="Last Name" 
-                      className="col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
-                      value={formData.patientName?.last ?? ''}
-                      onChange={(e) => updateNested('patientName', 'last', e.target.value)}
-                    />
-                    <input 
-                      placeholder="First Name" 
-                      className="col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
-                      value={formData.patientName?.first ?? ''}
-                      onChange={(e) => updateNested('patientName', 'first', e.target.value)}
-                    />
-                    <input 
-                      placeholder="Extension" 
-                      className="col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
-                      value={formData.patientName?.extension ?? ''}
-                      onChange={(e) => updateNested('patientName', 'extension', e.target.value)}
-                    />
-                    <input 
-                      placeholder="Middle Initial" 
-                      className="col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
-                      value={formData.patientName?.middle ?? ''}
-                      onChange={(e) => updateNested('patientName', 'middle', e.target.value)}
-                    />
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Last Name {requiredMark}</label>
+                      <input 
+                        placeholder="Last Name" 
+                        className="w-full col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={formData.patientName?.last ?? ''}
+                        onChange={(e) => updateNested('patientName', 'last', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">First Name {requiredMark}</label>
+                      <input 
+                        placeholder="First Name" 
+                        className="w-full col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={formData.patientName?.first ?? ''}
+                        onChange={(e) => updateNested('patientName', 'first', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Extension</label>
+                      <input 
+                        placeholder="Extension" 
+                        className="w-full col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={formData.patientName?.extension ?? ''}
+                        onChange={(e) => updateNested('patientName', 'extension', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Middle Initial</label>
+                      <input 
+                        placeholder="Middle Initial" 
+                        className="w-full col-span-1 px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
+                        value={formData.patientName?.middle ?? ''}
+                        onChange={(e) => updateNested('patientName', 'middle', e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Current Membership</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Current Membership {requiredMark}</label>
                     <select 
                       className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500 appearance-none"
                       value={formData.memberType}
                       onChange={(e) => setFormData({ ...formData, memberType: e.target.value as any })}
+                      required
                     >
                       <option value="Principal Member">Principal Member</option>
                       <option value="Dependent">Dependent</option>
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Date of Birth</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Date of Birth {requiredMark}</label>
                     <input 
                       type="date" 
                       className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                       value={formData.dob ?? ''}
                       onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Sex</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Sex {requiredMark}</label>
                     <div className="flex gap-2">
                       {['Male', 'Female'].map((sex) => (
                         <button
@@ -259,12 +370,13 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Civil Status</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Civil Status {requiredMark}</label>
                     <input 
                       placeholder="e.g. Single, Married, Widowed" 
                       className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                       value={formData.civilStatus ?? ''}
                       onChange={(e) => setFormData({ ...formData, civilStatus: e.target.value })}
+                      required
                     />
                   </div>
                 </div>
@@ -285,20 +397,20 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                       <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="e.g. 301" value={formData.address?.unit ?? ''} onChange={(e) => updateNested('address', 'unit', e.target.value)} />
                     </div>
                     <div className="lg:col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Building/Street</label>
-                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="Unit Name or Street Address" value={formData.address?.street ?? ''} onChange={(e) => updateNested('address', 'street', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Building/Street {requiredMark}</label>
+                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="Unit Name or Street Address" value={formData.address?.street ?? ''} onChange={(e) => updateNested('address', 'street', e.target.value)} required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Barangay</label>
-                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.barangay ?? ''} onChange={(e) => updateNested('address', 'barangay', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Barangay {requiredMark}</label>
+                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.barangay ?? ''} onChange={(e) => updateNested('address', 'barangay', e.target.value)} required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">City/Municipality</label>
-                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.city ?? ''} onChange={(e) => updateNested('address', 'city', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">City/Municipality {requiredMark}</label>
+                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.city ?? ''} onChange={(e) => updateNested('address', 'city', e.target.value)} required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Province</label>
-                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.province ?? ''} onChange={(e) => updateNested('address', 'province', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Province {requiredMark}</label>
+                      <input className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" value={formData.address?.province ?? ''} onChange={(e) => updateNested('address', 'province', e.target.value)} required />
                     </div>
                   </div>
                 </div>
@@ -310,12 +422,12 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mobile Number</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="+63 9xx xxxx xxx" value={formData.contact?.mobile ?? ''} onChange={(e) => updateNested('contact', 'mobile', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Mobile Number {requiredMark}</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="+63 9xx xxxx xxx" value={formData.contact?.mobile ?? ''} onChange={(e) => updateNested('contact', 'mobile', e.target.value)} required />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="patient@example.com" value={formData.contact?.email ?? ''} onChange={(e) => updateNested('contact', 'email', e.target.value)} />
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address {requiredMark}</label>
+                      <input className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-emerald-500" placeholder="patient@example.com" value={formData.contact?.email ?? ''} onChange={(e) => updateNested('contact', 'email', e.target.value)} required />
                     </div>
                     <div className="space-y-1 col-span-2 sm:col-span-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Landline Number</label>
@@ -391,21 +503,23 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-6">
-                      <label className={fieldLabelClass}>I started dialysis on (month & year)</label>
+                      <label className={fieldLabelClass}>I started dialysis on (month & year) {requiredMark}</label>
                       <input 
                         type="month" 
                         className={inputControlClass}
                         value={formData.dialysisStartDate ?? ''}
                         onChange={(e) => setFormData({ ...formData, dialysisStartDate: e.target.value })}
+                        required
                       />
                     </div>
 
                     <div className="md:col-span-6 relative">
-                      <label className={fieldLabelClass}>For HD: Type of Dialyzer</label>
+                      <label className={fieldLabelClass}>For HD: Type of Dialyzer {requiredMark}</label>
                       <select 
                         className={selectControlClass}
                         value={formData.hdDetails?.type}
                         onChange={(e) => updateNested('hdDetails', 'type', e.target.value)}
+                        required
                       >
                         <option value="Low flux">Low Flux</option>
                         <option value="High flux">High Flux</option>
@@ -442,7 +556,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                           key={sys}
                           type="button"
                           onClick={() => updateNested('pdDetails', 'system', sys)}
-                          className={`h-20 rounded-2xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-2
+                          className={`h-14 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 md:col-span-2
                             ${isSelected ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-100 scale-[1.02]' : 'bg-white border-slate-200 text-slate-400 hover:border-emerald-300 hover:text-slate-600'}
                           `}
                         >
@@ -509,7 +623,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">
-                        16. Signature / Thumbmark
+                        16. Signature / Thumbmark {requiredMark}
                       </label>
 
                       <input
@@ -530,6 +644,7 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                         style={{
                           fontFamily: '"Brush Script MT", "Segoe Script", "Lucida Handwriting", cursive',
                         }}
+                        required
                       />
 
                       {(formData as any).signaturePreview && (
@@ -547,12 +662,13 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                       </p>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">17. Date</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">17. Date {requiredMark}</label>
                       <input
                         type="date"
                         className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                         value={(formData as any).signatureDate ?? ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, signatureDate: e.target.value } as any))}
+                        required
                       />
                     </div>
                     <div className="space-y-1">
@@ -565,30 +681,33 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">19. Registered By (Health Care Institution)</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">19. Registered By (Health Care Institution) {requiredMark}</label>
                       <input
                         className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                         placeholder="Name of Health Care Institution"
                         value={formData.admin?.registeredBy?.startsWith('Juan Dela Cruz') ? '' : formData.admin?.registeredBy ?? ''}
                         onChange={(e) => updateNested('admin', 'registeredBy', e.target.value)}
+                        required
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">20. Accreditation No.</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">20. Accreditation No. {requiredMark}</label>
                       <input
                         className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                         placeholder="e.g. HCI-2024-00001"
                         value={formData.admin?.accreditationNo === 'N/A' ? '' : formData.admin?.accreditationNo ?? ''}
                         onChange={(e) => updateNested('admin', 'accreditationNo', e.target.value)}
+                        required
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">21. Registration Date</label>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">21. Registration Date {requiredMark}</label>
                       <input
                         type="date"
                         className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl outline-none focus:border-emerald-500"
                         value={formData.admin?.registrationDate ? formData.admin.registrationDate.substring(0, 10) : ''}
                         onChange={(e) => updateNested('admin', 'registrationDate', e.target.value)}
+                        required
                       />
                     </div>
                   </div>
@@ -656,12 +775,24 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
 
                 <div>
                   <h3 className="text-base font-bold tracking-tight text-slate-800">
-                    Confirm Submission
+                    {stepError.length > 0 ? 'Required Fields Missing' : 'Confirm Submission'}
                   </h3>
                   <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-                    Are you sure you want to submit this registration form? Please review the details before completing the application.
+                    {stepError.length > 0
+                      ? 'Please resolve the following required fields before submitting.'
+                      : 'Are you sure you want to submit this registration form? Please review the details before completing the application.'}
                   </p>
                 </div>
+
+                {stepError.length > 0 && (
+                  <div className="rounded-3xl border border-rose-100 bg-rose-50 p-4 text-left text-xs text-rose-700">
+                    <ul className="list-disc list-inside space-y-1">
+                      {stepError.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div className="flex gap-2.5 pt-2">
                   <button
@@ -674,7 +805,8 @@ export default function RegistrationForm({ onSubmit }: RegistrationFormProps) {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    className="h-11 flex-1 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-md shadow-emerald-100 transition-colors hover:bg-emerald-700"
+                    disabled={stepError.length > 0}
+                    className={`h-11 flex-1 rounded-xl text-xs font-bold transition-colors ${stepError.length > 0 ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white shadow-md shadow-emerald-100 hover:bg-emerald-700'}`}
                   >
                     Submit
                   </button>

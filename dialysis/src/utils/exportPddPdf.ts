@@ -191,15 +191,15 @@ export const DEFAULT_PDD_FIELD_MAP = {
     "y": 244
   },
   "pdCapd": {
-    "x": 207,
+    "x": 163,
     "y": 216
   },
   "pdCipdC": {
-    "x": 246,
+    "x": 208,
     "y": 216
   },
   "pdCipdM": {
-    "x": 290,
+    "x": 262,
     "y": 216
   },
   "pdCcpd": {

@@ -79,6 +79,8 @@ export default function EditRegistrationModal({
     }));
   };
 
+  const requiredMark = <span className="text-red-500">*</span>;
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -156,7 +158,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1 md:col-span-2">
                 <span className="text-xs font-bold text-slate-500">
-                  PhilHealth PIN
+                  PhilHealth PIN {requiredMark}
                 </span>
                 <input
                   value={formData.pin}
@@ -176,7 +178,7 @@ export default function EditRegistrationModal({
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Last Name
+                  Last Name {requiredMark}
                 </span>
                 <input
                   value={formData.patientName.last}
@@ -189,7 +191,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  First Name
+                  First Name {requiredMark}
                 </span>
                 <input
                   value={formData.patientName.first}
@@ -229,7 +231,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Member Type
+                  Member Type {requiredMark}
                 </span>
                 <select
                   value={formData.memberType}
@@ -245,7 +247,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Date of Birth
+                  Date of Birth {requiredMark}
                 </span>
                 <input
                   type="date"
@@ -256,7 +258,7 @@ export default function EditRegistrationModal({
               </label>
 
               <label className="space-y-1">
-                <span className="text-xs font-bold text-slate-500">Sex</span>
+                <span className="text-xs font-bold text-slate-500">Sex {requiredMark}</span>
                 <select
                   value={formData.sex}
                   onChange={(event) =>
@@ -271,7 +273,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Civil Status
+                  Civil Status {requiredMark}
                 </span>
                 <input
                   value={formData.civilStatus}
@@ -290,7 +292,7 @@ export default function EditRegistrationModal({
               Mailing Address
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {[
                 ['unit', 'Unit/Room/Floor'],
                 ['building', 'Building Name'],
@@ -305,7 +307,7 @@ export default function EditRegistrationModal({
               ].map(([field, label]) => (
                 <label key={field} className="space-y-1">
                   <span className="text-xs font-bold text-slate-500">
-                    {label}
+                    {label} {['street','barangay','city','province'].includes(field as string) ? requiredMark : null}
                   </span>
                   <input
                     value={
@@ -334,7 +336,7 @@ export default function EditRegistrationModal({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Email Address
+                  Email Address {requiredMark}
                 </span>
                 <input
                   type="email"
@@ -348,7 +350,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Mobile Number
+                  Mobile Number {requiredMark}
                 </span>
                 <input
                   value={formData.contact.mobile}
@@ -436,7 +438,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Dialysis Start Month
+                  Dialysis Start Month {requiredMark}
                 </span>
                 <input
                   type="month"
@@ -450,7 +452,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  HD Dialyzer Type
+                  HD Dialyzer Type {requiredMark}
                 </span>
                 <select
                   value={formData.hdDetails.type}
@@ -530,7 +532,7 @@ export default function EditRegistrationModal({
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Registered By
+                  Registered By <span className="text-red-500">*</span>
                 </span>
                 <input
                   value={formData.admin.registeredBy}
@@ -538,12 +540,13 @@ export default function EditRegistrationModal({
                     updateNested('admin', 'registeredBy', event.target.value)
                   }
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500"
+                  required
                 />
               </label>
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Accreditation No.
+                  Accreditation No. <span className="text-red-500">*</span>
                 </span>
                 <input
                   value={formData.admin.accreditationNo}
@@ -551,12 +554,13 @@ export default function EditRegistrationModal({
                     updateNested('admin', 'accreditationNo', event.target.value)
                   }
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500"
+                  required
                 />
               </label>
 
               <label className="space-y-1">
                 <span className="text-xs font-bold text-slate-500">
-                  Registration Date
+                  Registration Date <span className="text-red-500">*</span>
                 </span>
                 <input
                   type="datetime-local"
@@ -569,6 +573,7 @@ export default function EditRegistrationModal({
                     )
                   }
                   className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-emerald-500"
+                  required
                 />
               </label>
             </div>
